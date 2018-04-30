@@ -1,0 +1,32 @@
+language: python
+cache:
+  - pip
+branches:
+  only:
+    - master
+    - dev
+python:
+  - 2.7
+  - 3.4
+  - 3.5
+  - 3.6
+install:
+  - pip install flake8
+  - pip install pytest
+script:
+  - echo -e "Testing TLX"
+  - flake8 --ignore=E501
+  - pytest
+before_deploy:
+  - ci/build_deploy.sh
+deploy:
+  provider: pypi
+  skip_cleanup: true
+  server: $PYPI_URL
+  on:
+    branch: dev
+    python: 2.7
+  distributions: "sdist bdist_wheel"
+  user: tpj800
+  password:
+    secure:
