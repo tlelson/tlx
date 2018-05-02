@@ -21,7 +21,6 @@ class Session(boto3.session.Session):
     """
 
     def __init__(self, region=None, profile=None, role=None, mfa_serial=None, mfa_token=None):
-
         if profile and role:
             raise AttributeError("Either a profile should be used OR a role assumed. Not both.")
 
@@ -39,8 +38,8 @@ class Session(boto3.session.Session):
                 'aws_secret_access_key': creds['SecretAccessKey'],
                 'aws_session_token': creds['SessionToken'],
             })
-        else:
-            params['profile_name'] = profile if profile else 'default'
+        elif profile:
+            params['profile_name'] = profile
         try:
             boto3.session.Session.__init__(self, **{k: v for k, v in params.items() if v})
         except ClientError as e:
