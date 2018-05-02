@@ -24,7 +24,7 @@ def get_python_version(py_version, string=False):
 
 setup(
     name='tlx',
-    version=get_version() + get_python_version(sys.version_info),
+    version=get_version() + get_python_version(sys.version_info, string=True),
     description='Frequently used utilities and code.',
     url='https://github.com/eL0ck/tlx',
     author='eL0ck',
