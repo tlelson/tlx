@@ -37,6 +37,8 @@ deploy:
   user: $PYPI_USERNAME
   password: $PYPI_PASSWORD
   on:  # yamllint disable-line rule:truthy
-    branch: dev
+    branch:
+      - dev
+      - master
     python: 2.7
   distributions: "sdist bdist_wheel"
