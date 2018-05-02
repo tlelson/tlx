@@ -7,8 +7,8 @@ branches:
     - dev
 python:
   - 2.7
-  - 3.4
-  - 3.5
+  #- 3.4
+  #- 3.5
   - 3.6
 install:
   - pip install flake8
@@ -25,7 +25,7 @@ deploy:
   server: $PYPI_URL
   on:
     branch: dev
-    python: 2.7
+    #python: 2.7
   distributions: "sdist bdist_wheel"
   user: $PYPI_USERNAME
   password: $PYPI_PASSWORD
