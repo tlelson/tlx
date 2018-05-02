@@ -5,22 +5,22 @@ from botocore.exceptions import ClientError
 
 
 class Session(boto3.session.Session):
+    """Returns an AWS session instance.  If no parameters are provided, keys from `.aws/credentials` 'default' profile are used.
+
+        Kwargs (all optional):
+            region (str): An AWS region
+            profile (str): A profile with API keys as configured in ~/.aws/credentials file. Not to be used with other parmeters.
+                If your role needs an MFA token you will be prompted for input.
+            role (str): AWS Arn of the role the user is assuming. If None, the users identity is used.
+            mfa_serial (str): AWS Arn of the users Multi-Factor authentication device.
+            mfa_token (str): 6 digit Multi-Factor Authentication code.
+
+        Example:
+            session = Session()
+            s3client = session.client('s3')
+    """
 
     def __init__(self, region=None, profile=None, role=None, mfa_serial=None, mfa_token=None):
-        """Returns an AWS session instance.  If no parameters are provided, keys from `.aws/credentials` 'default' profile are used.
-
-            Kwargs (all optional):
-                region (str): An AWS region
-                profile (str): A profile with API keys as configured in ~/.aws/credentials file. Not to be used with other parmeters.
-                    If your role needs an MFA token you will be prompted for input.
-                role (str): AWS Arn of the role the user is assuming. If None, the users identity is used.
-                mfa_serial (str): AWS Arn of the users Multi-Factor authentication device.
-                mfa_token (str): 6 digit Multi-Factor Authentication code.
-
-            Example:
-                session = Session()
-                s3client = session.client('s3')
-        """
 
         if profile and role:
             raise AttributeError("Either a profile should be used OR a role assumed. Not both.")
