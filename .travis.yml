@@ -1,3 +1,4 @@
+---
 language: python
 cache:
   - pip
@@ -22,10 +23,10 @@ before_deploy:
 deploy:
   provider: pypi
   skip_cleanup: true
-  server: $PYPI_URL
+  server: https://test.pypi.org/legacy/
   user: $PYPI_USERNAME
   password: $PYPI_PASSWORD
-  on:
+  on:  # yamllint disable-line rule:truthy
     branch: dev
     python: 2.7
   distributions: "sdist bdist_wheel"

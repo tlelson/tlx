@@ -33,5 +33,9 @@ setup(
             'dynamo-batch-prepare=tlx.dynamodb.cli_apps.dynamodb_batch_prepare:main',
         ],
     },
+    data_files=[
+        'version.txt',
+        'requirements.txt',
+    ],
     zip_safe=False,
 )
