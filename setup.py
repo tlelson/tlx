@@ -1,4 +1,3 @@
-import sys
 from setuptools import setup, find_packages
 import os
 
@@ -15,22 +14,15 @@ def get_version():
         return f.readline().split()[0]  # Filter out other junk
 
 
-# Completely unnessesary but testing bitbucket pipelines and observing PyPi files
-def get_python_version(py_version, string=False):
-    if string:
-        return "_py{}{}".format(py_version.major, py_version.minor)
-    return "{}.{}".format(py_version.major, py_version.minor)
-
-
 setup(
     name='tlx',
-    version=get_version() + get_python_version(sys.version_info, string=True),
+    version=get_version(),
     description='Frequently used utilities and code.',
     url='https://github.com/eL0ck/tlx',
     author='eL0ck',
     author_email='tpj800@gmail.com',
     license='Apache',
-    python_requires='~=' + get_python_version(sys.version_info),
+    python_requires='~=2.7, ~=3.3',
     packages=find_packages(),
     install_requires=get_install_requires(),
     zip_safe=False,
