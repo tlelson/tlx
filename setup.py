@@ -16,13 +16,15 @@ def get_version():
 
 
 # Completely unnessesary but testing bitbucket pipelines and observing PyPi files
-def get_python_version(py_version):
+def get_python_version(py_version, string=False):
+    if string:
+        return "_py{}{}".format(py_version.major, py_version.minor)
     return "{}.{}".format(py_version.major, py_version.minor)
 
 
 setup(
     name='tlx',
-    version=get_version(),
+    version=get_version() + get_python_version(sys.version_info),
     description='Frequently used utilities and code.',
     url='https://github.com/eL0ck/tlx',
     author='eL0ck',
