@@ -1,5 +1,9 @@
 ---
 language: python
+env:
+  global:
+    - PYPI_TEST=https://test.pypi.org/legacy/
+    - PYPI_PROD=https://upload.pypi.org/legacy/
 cache:
   - pip
 branches:
@@ -14,16 +18,22 @@ python:
 install:
   - pip install flake8
   - pip install pytest
+  - pip install -r requirements.txt
 script:
   - echo -e "Testing TLX"
   - flake8 --ignore=E501
   - pytest
 before_deploy:
   - ci/build_deploy.sh
+  - |
+    if [ $TRAVIS_BRANCH == 'master' ];
+      then export PYPI_SERVER=$PYPI_PROD;
+      else export PYPI_SERVER=$PYPI_TEST;
+    fi
 deploy:
   provider: pypi
   skip_cleanup: true
-  server: https://test.pypi.org/legacy/
+  server: $PYPI_SERVER
   user: $PYPI_USERNAME
   password: $PYPI_PASSWORD
   on:  # yamllint disable-line rule:truthy
