@@ -10,11 +10,11 @@ python:
   #- 3.4
   #- 3.5
   - 3.6
-#install:
-  #- pip install flake8
-  #- pip install pytest
-#script:
-  #- echo -e "Testing TLX"
+install:
+  - pip install flake8
+  - pip install pytest
+script:
+  - echo -e "Testing TLX"
   #- flake8 --ignore=E501
   #- pytest
 before_deploy:
