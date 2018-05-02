@@ -49,5 +49,3 @@ def main(profile, quiet):
     print("export AWS_ACCESS_KEY_ID={}".format(creds.access_key))
     print("export AWS_SECRET_ACCESS_KEY={}".format(creds.secret_key))
     print("export AWS_SESSION_TOKEN={}".format(creds.token))
-
-
