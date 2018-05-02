@@ -10,7 +10,7 @@ class Logger:
     @staticmethod
     def create_logger(name=None, log_file=None):
         if not name:
-            name = 'kwrappers'
+            name = 'tlx'
         logger = logging.getLogger(name)
         logger.setLevel(logging.DEBUG)
 
