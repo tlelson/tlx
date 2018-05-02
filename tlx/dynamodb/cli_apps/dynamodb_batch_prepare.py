@@ -7,7 +7,8 @@ import click
 @click.option('--dump-file', '-d', required=True, type=click.File('rb'), help="File dumped from dynamodb with.")
 @click.option('--table-name', '-n', required=True, help="Table to send data to. Table must exist and key schema must match.  Use `aws dynamodb describe-table --table-name <TableName>`")
 def main(dump_file, table_name):
-    """DYNAMO BATCH PREPARE (dbp)
+    """
+        DYNAMO BATCH PREPARE (dbp)
 
         \b
         `dynamodb-batch-prepare --help`

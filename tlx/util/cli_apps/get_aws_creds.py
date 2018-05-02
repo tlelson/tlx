@@ -11,7 +11,8 @@ from tlx.util import Session
 @click.option('--quiet', default=False, is_flag=True, help='If using the outputs directly, see --help.')
 def main(profile, quiet):
     """
-        Get AWS Creds (gac):
+        GET AWS CREDS (gac):
+
         Gets temporary AWS session from a profile.  Allows you to export into your shell and run tools expecting the AWS standard environment variables. Namely:
 
         \b
