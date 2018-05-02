@@ -27,6 +27,5 @@ deploy:
     branch: dev
     python: 2.7
   distributions: "sdist bdist_wheel"
-  user: tpj800
-  password:
-    secure:
+  user: $PYPI_USERNAME
+  password: $PYPI_PASSWORD
