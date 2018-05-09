@@ -1,14 +1,13 @@
-from tlx.util import Session
+import boto3
 from collections import defaultdict
 import datetime as dt
-session = Session()
 now = dt.datetime.now(tz=dt.timezone.utc)
 
 ## Idea: Wrap this in an async call and when it yeilds. Stop printing events
 
 stack_name = 'my-ledAPI-dev'
-cfn_client = session.client('cloudformation')
-cloudformation = session.resource('cloudformation')
+cfn_client = boto3.client('cloudformation')
+cloudformation = boto3.resource('cloudformation')
 stack = cloudformation.Stack(stack_name)
 
 class keydefaultdict(defaultdict):
