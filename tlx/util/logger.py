@@ -8,7 +8,7 @@ class Logger:
     log = None
 
     @staticmethod
-    def create_logger(name=None, log_file=None):
+    def create_logger(name=None, log_file=None, level=None):
         if not name:
             name = 'tlx'
         logger = logging.getLogger(name)
@@ -21,7 +21,7 @@ class Logger:
 
         # create console handler
         ch = logging.StreamHandler()
-        ch.setLevel(logging.DEBUG)
+        ch.setLevel(getattr(logging, level))
 
         # create formatter and add it to the handler
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -38,11 +38,11 @@ class Logger:
 
         Logger.log = logger
 
-    def __init__(self, name=None, log_file=None):
+    def __init__(self, name=None, log_file=None, level='INFO'):
         if not Logger.log:
-            Logger.create_logger(name, log_file)
+            Logger.create_logger(name, log_file, level)
 
 
-def get_log():
-    logger = Logger()
+def get_log(name=None, log_file=None, level=None):
+    logger = Logger(name, log_file, level)
     return logger.log

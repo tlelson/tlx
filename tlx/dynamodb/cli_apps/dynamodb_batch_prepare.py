@@ -23,7 +23,6 @@ def main(dump_file, table_name):
 
     scan_data = json.load(dump_file)
 
-    table_name = 'StageData'
     items = scan_data['Items']
 
     batch_request = {
