@@ -16,13 +16,15 @@ def main(profile, quiet):
         Gets temporary AWS session from a profile.  Allows you to export into your shell and run tools expecting the AWS standard environment variables. Namely:
 
         \b
-        - AWS_ACCESS_KEY_ID
-        - AWS_SECRET_ACCESS_KEY
-        - AWS_SESSION_TOKEN
+            - AWS_ACCESS_KEY_ID
+            - AWS_SECRET_ACCESS_KEY
+            - AWS_SESSION_TOKEN
 
         Your aws credentials file (default: `~/.aws/credentials`) should be configured like so:
         \b
         Configure `credentials` like so:
+
+        \b
             [profilename]
             region = us-east-2
             role_arn = arn:aws:iam::************:role/Demo-StackCreator
@@ -31,8 +33,19 @@ def main(profile, quiet):
 
         Returns: commands to copy to your shell terminal
 
-        Consider appending the following to your `.bashrc` to have the environment variables set automatically.
-        `gac(){ for i in "$( gac "$@" --quiet)"; do eval "${i}"; done;}`
+        -------------------------- ADVANCED USAGE --------------------------------------
+
+        Consider appending the following to your `.bashrc` to have the environment variables set automatically:
+
+        \b
+            gac ()
+            {
+                for i in "$( get-aws-creds "$@" --quiet)";
+                do
+                    eval "${i}";
+                done
+            }
+
 
     """
     try:
