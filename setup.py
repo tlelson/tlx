@@ -30,6 +30,7 @@ setup(
             'get-aws-creds=tlx.util.cli_apps.get_aws_creds:main',
             'dbp=tlx.dynamodb.cli_apps.dynamodb_batch_prepare:main',
             'dynamo-batch-prepare=tlx.dynamodb.cli_apps.dynamodb_batch_prepare:main',
+            'dynamo-batch-write=tlx.dynamodb.cli_apps.dynamodb_batch_write:dbw',
         ],
     },
     data_files=[
