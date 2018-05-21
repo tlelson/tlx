@@ -1,11 +1,11 @@
 import json
 import boto3
-import click
 from decimal import Decimal
 from collections import defaultdict
 
 
 ddbclient = boto3.client('dynamodb')  # For exeption handling
+
 
 def _pull_values(item):
     return {k: _set_types(v) for k, v in item.items()}
@@ -41,6 +41,7 @@ def batch_write(table, items):
                 Item=_pull_values(item),
             )
 
+
 def load_data(dump_file, table=None):
     """
         Loads the results of a scan opperation into a table.
@@ -59,9 +60,6 @@ def load_data(dump_file, table=None):
         pass
     else:
         raise Exception("table must be either the name of an existing table or a boto3 table object")
-
-    print(f"Type of 'table' is: {type(table)}")
-
 
     items = json.load(dump_file)['Items']
     batch_write(table, items)

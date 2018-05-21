@@ -60,7 +60,7 @@ def _assume_role(role, mfa_serial, mfa_token):
     params = {
         "RoleArn": role,
         "RoleSessionName": 'ecs-deploy-session',
-        "DurationSeconds": 3600,
+        "DurationSeconds": 3600 * 8,  # Try 8 hours
         "SerialNumber": mfa_serial,
         "TokenCode": mfa_token
     }

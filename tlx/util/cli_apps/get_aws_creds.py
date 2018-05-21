@@ -45,9 +45,8 @@ def main(profile, quiet):
                     eval "${i}";
                 done
             }
-
-
     """
+
     try:
         session = Session(profile=profile)
         creds = session.get_session_creds()

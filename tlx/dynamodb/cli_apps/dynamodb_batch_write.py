@@ -2,6 +2,7 @@ import sys
 import click
 from tlx.dynamodb.batch import load_data
 
+
 @click.command(context_settings=dict(max_content_width=120, help_option_names=['-h', '--help']))
 @click.option('--dump-file', '-d', required=True, type=click.File('rb'), help="File dumped from dynamodb with a `scan`.")
 @click.option('--table', '-t', required=True, help="Table to send data to. Table must exist and key schema must match.  Use `aws dynamodb describe-table --table-name <TableName>`")
@@ -24,4 +25,3 @@ def dbw(dump_file, table=None):
     except Exception as e:
         print("{}: {}".format(type(e).__name__, e))
         sys.exit(1)
-

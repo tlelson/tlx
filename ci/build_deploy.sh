@@ -7,11 +7,13 @@ echo "Short hash: ${SHORT_HASH}"
 
 # Take only the first string. Discards other strings
 a=($(cat version.txt | xargs))
-# version_no=${a[0]}
+version_no=${a[0]}
 
-BUILD_VERSION=${a[0]}.${TRAVIS_BUILD_NUMBER}
+BUILD_VERSION=${version_no}.${TRAVIS_BUILD_NUMBER}
 echo "BUILD_VERSION: ${BUILD_VERSION}"
 echo ${BUILD_VERSION} > version.txt
+
+# Prepare version with githash (unused)
 BUILD_VERSION=${BUILD_VERSION}-${SHORT_HASH}
 echo "Could use the following for conda: $BUILD_VERSION"
 
