@@ -71,7 +71,7 @@ def get_ddb_table(table):
             dynamodb = boto3.resource('dynamodb')
             table = dynamodb.Table(table)
         else:
-            raise Exception(f"Table must be either a boto3 Table object or a string not: {type(table)}")
+            raise Exception("Table must be either a boto3 Table object or a string not: {}".format(type(table)))
     return table
 
 
@@ -102,4 +102,4 @@ def load_from_csv(csv_file, table):
     try:
         batch_write(table, items)
     except KeyError:
-        raise Exception(f"load_from_csv only supports Dynamo Types {list(_func_map)}")
+        raise Exception("load_from_csv only supports Dynamo Types {}".format(list(_func_map)))
