@@ -38,8 +38,9 @@ def batch_write1(table, items):
                 Item=_pull_values(item),
             )
 
-# Need to unify
+
 def batch_write2(table, items):
+    # Need to unify
     with table.batch_writer() as batch:
         for item in items:
             batch.put_item(
@@ -108,12 +109,14 @@ def load_from_csv(csv_file, table):
     # Decimal Conversion if string field
     ddata = []
     for d in data[2:]:
+        itm = {}
         for k, t, v in zip(field_names, types, d):
             value = _this_func_map[t](v)
             if t == 'N' and (math.isnan(value) or math.isinf(value)):
                 # Remove Inf and Nan, DynamoDB does support them
                 continue
-            ddata.append({k: value})
+            itm[k] = value
+        ddata.append(itm)
 
     try:
         batch_write2(table, ddata)
