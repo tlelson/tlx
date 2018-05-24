@@ -1,4 +1,5 @@
 import csv
+import math
 import json
 import boto3
 from decimal import Decimal
@@ -30,11 +31,19 @@ def _set_types(v):
 #  ------------- END ----------#
 
 
-def batch_write(table, items):
+def batch_write1(table, items):
     with table.batch_writer() as batch:
         for item in items:
             batch.put_item(
                 Item=_pull_values(item),
+            )
+
+# Need to unify
+def batch_write2(table, items):
+    with table.batch_writer() as batch:
+        for item in items:
+            batch.put_item(
+                Item=item,
             )
 
 
@@ -58,7 +67,7 @@ def load_data(dump_file, table=None):
         raise Exception("table must be either the name of an existing table or a boto3 table object")
 
     items = json.load(dump_file)['Items']
-    batch_write(table, items)
+    batch_write1(table, items)
 
 
 def get_ddb_table(table):
@@ -91,15 +100,22 @@ def load_from_csv(csv_file, table):
     field_names, types = data[0], data[1]
 
     # Throws KeyError if missing. Only string and number are supported for csv
-    _func_map = {
-        'N': lambda x: Decimal(x),
+    _this_func_map = {
+        'N': lambda x: Decimal(x if x else 'Nan'),
         'S': lambda x: str(x),
     }
 
     # Decimal Conversion if string field
-    items = [{k: _func_map[t](v) for k, t, v in zip(field_names, types, d)} for d in data[2:]]
+    ddata = []
+    for d in data[2:]:
+        for k, t, v in zip(field_names, types, d):
+            value = _this_func_map[t](v)
+            if t == 'N' and (math.isnan(value) or math.isinf(value)):
+                # Remove Inf and Nan, DynamoDB does support them
+                continue
+            ddata.append({k: value})
 
     try:
-        batch_write(table, items)
+        batch_write2(table, ddata)
     except KeyError:
         raise Exception("load_from_csv only supports Dynamo Types {}".format(list(_func_map)))
