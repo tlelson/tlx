@@ -31,7 +31,7 @@ def _set_types(v):
 #  ------------- END ----------#
 
 
-def batch_write1(table, items):
+def _batch_write1(table, items):
     with table.batch_writer() as batch:
         for item in items:
             batch.put_item(
@@ -39,7 +39,7 @@ def batch_write1(table, items):
             )
 
 
-def batch_write2(table, items):
+def _batch_write2(table, items):
     # Need to unify
     with table.batch_writer() as batch:
         for item in items:
@@ -59,16 +59,9 @@ def load_data(dump_file, table=None):
             - Take the output of a table scan, requiring no reformatting
     """
 
-    if isinstance(table, str):
-        dynamodb = boto3.resource('dynamodb')
-        table = dynamodb.Table(table)
-    elif isinstance(table, boto3.resources.factory.dynamodb.Table):
-        pass
-    else:
-        raise Exception("table must be either the name of an existing table or a boto3 table object")
-
+    table = get_ddb_table(table)
     items = json.load(dump_file)['Items']
-    batch_write1(table, items)
+    _batch_write1(table, items)
 
 
 def get_ddb_table(table):
@@ -119,6 +112,6 @@ def load_from_csv(csv_file, table):
         ddata.append(itm)
 
     try:
-        batch_write2(table, ddata)
+        _batch_write2(table, ddata)
     except KeyError:
         raise Exception("load_from_csv only supports Dynamo Types {}".format(list(_func_map)))
