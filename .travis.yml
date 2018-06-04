@@ -23,6 +23,7 @@ script:
   - echo -e "Testing TLX"
   - flake8 --ignore=E501
   - pytest
+  - bash tests/basic_cli_tests.sh
 before_deploy:
   - ci/build_deploy.sh
   - |
