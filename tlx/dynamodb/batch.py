@@ -4,12 +4,12 @@ import json
 import boto3
 from decimal import Decimal
 from collections import defaultdict
+from tlx.util.common import get_uuid
 
 
 ddbclient = boto3.client('dynamodb')  # For exeption handling
 
 
-# ------------- I don't know what the following where used for ----------#
 def _pull_values(item):
     return {k: _set_types(v) for k, v in item.items()}
 
@@ -28,10 +28,13 @@ def _set_types(v):
     returned_value = list(v.values())[0]  # Always one from dump
     return _func_map[v_key](returned_value)
 
-#  ------------- END ----------#
-
 
 def _batch_write1(table, items):
+    """This batch writer takes `items` from a scan.  Scan results are dictionaries with their keys being
+    the data types.  Changed the form of the scaned item into the form accepted by `put_item`"""
+
+    # TODO: Dont do the type conversion in _pull_values. Just collapse it and use json.dump/load to deal with
+    # floats and ints
     with table.batch_writer() as batch:
         for item in items:
             batch.put_item(
@@ -39,8 +42,7 @@ def _batch_write1(table, items):
             )
 
 
-def _batch_write2(table, items):
-    # Need to unify
+def batch_write(table, items):
     with table.batch_writer() as batch:
         for item in items:
             batch.put_item(
@@ -61,6 +63,7 @@ def load_data(dump_file, table=None):
 
     table = get_ddb_table(table)
     items = json.load(dump_file)['Items']
+    # TODO: should run items through _pull_values here instead of inside the batch write
     _batch_write1(table, items)
 
 
@@ -102,6 +105,7 @@ def load_from_csv(csv_file, table):
     # Decimal Conversion if string field
     ddata = []
     for d in data[2:]:
+        # TODO: Should be an comprehension
         itm = {}
         for k, t, v in zip(field_names, types, d):
             value = _this_func_map[t](v)
@@ -112,6 +116,25 @@ def load_from_csv(csv_file, table):
         ddata.append(itm)
 
     try:
-        _batch_write2(table, ddata)
+        batch_write(table, ddata)
     except KeyError:
         raise Exception("load_from_csv only supports Dynamo Types {}".format(list(_func_map)))
+
+
+def load_json_dump(file_name, table_name, primary_key=False):
+    """ If `primary_key` is provided the field is added to each item with a unique id as the sole partition key.
+        If not provided, the input data must contain the keys of the dynamodb.
+    """
+    table = get_ddb_table(table_name)
+
+    with open(file_name, 'r') as f:
+        items = [
+            json.loads(line.replace('\n', ''), parse_int=Decimal, parse_float=Decimal)
+            for line in f
+        ]
+
+    if primary_key:
+        for i in items:
+            i[primary_key] = get_uuid()
+
+    batch_write(table, items)
