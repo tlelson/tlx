@@ -7,9 +7,6 @@ from collections import defaultdict
 from tlx.util.common import get_uuid
 
 
-ddbclient = boto3.client('dynamodb')  # For exeption handling
-
-
 def _pull_values(item):
     return {k: _set_types(v) for k, v in item.items()}
 
@@ -84,7 +81,7 @@ def get_ddb_table(table):
 def load_from_csv(csv_file, table):
     """ CSV must conform to the following format:
             first row:  Field names
-            second row: Field types
+            second row: Field types. One of: ['N', 'S']
 
         N.B Only works for flat data structures. i.e Maps/Lists/Sets are not supported
     """
@@ -118,7 +115,7 @@ def load_from_csv(csv_file, table):
     try:
         batch_write(table, ddata)
     except KeyError:
-        raise Exception("load_from_csv only supports Dynamo Types {}".format(list(_func_map)))
+        raise Exception("load_from_csv only supports Dynamo Types {}".format(list(_this_func_map)))
 
 
 def load_json_dump(file_name, table_name, primary_key=False):
