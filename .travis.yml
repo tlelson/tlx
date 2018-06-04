@@ -22,6 +22,7 @@ install:
 script:
   - echo -e "Testing TLX"
   - flake8 --ignore=E501
+  - pip install .   # Install package
   - pytest
   - bash tests/basic_cli_tests.sh
 before_deploy:
