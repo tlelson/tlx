@@ -100,23 +100,23 @@ def load_from_csv(csv_file, table):
     }
 
     # Decimal Conversion if string field
-    ddata = []
-    for d in data[2:]:
-        # TODO: Should be an comprehension
-        itm = {}
-        for k, t, v in zip(field_names, types, d):
-            value = _this_func_map[t](v)
-            if t == 'N' and (math.isnan(value) or math.isinf(value)):
-                # Remove Inf and Nan, DynamoDB does support them
-                continue
-            itm[k] = value
-        ddata.append(itm)
-
     try:
-        batch_write(table, ddata)
+        ddata = []
+        for d in data[2:]:
+            # TODO: Should be an comprehension
+            itm = {}
+            for k, t, v in zip(field_names, types, d):
+                value = _this_func_map[t](v)
+                if t == 'N' and (math.isnan(value) or math.isinf(value)):
+                    # Remove Inf and Nan, DynamoDB does support them
+                    continue
+                itm[k] = value
+            ddata.append(itm)
+
     except KeyError:
         raise Exception("load_from_csv only supports Dynamo Types {}".format(list(_this_func_map)))
 
+    batch_write(table, ddata)
 
 def load_json_dump(file_name, table_name, primary_key=False):
     """ If `primary_key` is provided the field is added to each item with a unique id as the sole partition key.
