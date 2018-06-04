@@ -94,29 +94,36 @@ def load_from_csv(csv_file, table):
     field_names, types = data[0], data[1]
 
     # Throws KeyError if missing. Only string and number are supported for csv
+    def _format_number(x):
+        tmp = Decimal(x if x else 'Nan')
+        if math.isnan(tmp) or math.isinf(tmp):
+            # Remove Inf and Nan, DynamoDB does support them
+            return None
+        return tmp
+
     _this_func_map = {
-        'N': lambda x: Decimal(x if x else 'Nan'),
+        'N': _format_number,
         'S': lambda x: str(x),
     }
 
     # Decimal Conversion if string field
     try:
-        ddata = []
-        for d in data[2:]:
-            # TODO: Should be an comprehension
-            itm = {}
-            for k, t, v in zip(field_names, types, d):
-                value = _this_func_map[t](v)
-                if t == 'N' and (math.isnan(value) or math.isinf(value)):
-                    # Remove Inf and Nan, DynamoDB does support them
-                    continue
-                itm[k] = value
-            ddata.append(itm)
-
+        ddata = [
+            {
+                k1: v1
+                for k1, v1 in {
+                    k: _this_func_map[t](v)
+                    for k, t, v in zip(field_names, types, d)
+                }.items()
+                if v1
+            }
+            for d in data[2:]
+        ]
     except KeyError:
         raise Exception("load_from_csv only supports Dynamo Types {}".format(list(_this_func_map)))
 
     batch_write(table, ddata)
+
 
 def load_json_dump(file_name, table_name, primary_key=False):
     """ If `primary_key` is provided the field is added to each item with a unique id as the sole partition key.

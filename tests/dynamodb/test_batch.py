@@ -12,7 +12,7 @@ import tlx.dynamodb.batch
 class TestBatchCSVLoad(TestCase):
 
     def test_load_from_csv1(self, batch_write, get_ddb_table):
-        msg = "should form correct item list for boto3 batch_write operation"
+        """should form correct item list for boto3 batch_write operation"""
 
         get_ddb_table.return_value = 'table1'
 
@@ -50,7 +50,7 @@ class TestBatchCSVLoad(TestCase):
             os.remove(path)
 
     def test_load_from_csv_nans_popped(self, batch_write, get_ddb_table):
-        msg = "nan and inf are not loaded"
+        """nan and inf are not loaded"""
 
         get_ddb_table.return_value = 'table1'
 
@@ -113,11 +113,10 @@ class TestBatchCSVLoad(TestCase):
                 f.write(text_data)
 
             # 2.    Check output
-            with self.assertRaises(Exception):
+            with self.assertRaises(Exception, msg=msg):
                 tlx.dynamodb.batch.load_from_csv(path, 'table')
 
             get_ddb_table.assert_called_once()
             assert not batch_write.called, 'batch_write should not have been called'
         finally:
             os.remove(path)
-
