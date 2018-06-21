@@ -111,10 +111,10 @@ def load_from_csv(csv_file, table):
         ddata = [
             {
                 k1: v1
-                for k1, v1 in {
-                    k: _this_func_map[t](v)
+                for k1, v1 in (
+                    (k, _this_func_map[t](v))
                     for k, t, v in zip(field_names, types, d)
-                }.items()
+                )
                 if v1
             }
             for d in data[2:]
