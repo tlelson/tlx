@@ -126,7 +126,10 @@ def load_from_csv(csv_file, table):
 
 
 def load_json_dump(file_name, table_name, primary_key=False):
-    """ If `primary_key` is provided the field is added to each item with a unique id as the sole partition key.
+    """ Loads a file consisting of newline seperated items, in which each item is
+        a json row object (Such as a BigQuery dump).
+
+        If `primary_key` is provided the field is added to each item with a unique id as the sole partition key.
         If not provided, the input data must contain the keys of the dynamodb.
     """
     table = get_ddb_table(table_name)
