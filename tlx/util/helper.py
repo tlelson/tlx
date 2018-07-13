@@ -7,5 +7,16 @@ def paginate(method, **kwargs):
     client = method.__self__
     paginator = client.get_paginator(method.__name__)
     for page in paginator.paginate(**kwargs).result_key_iters():
-        for result in page:
-            yield result
+        try:
+            for result in page:
+                yield result
+        except TypeError as te:
+            pass
+            # Dont know what the issue is here
+            # but we get it sometimes with this:
+            # ddb = boto3.client('dynamodb')
+            # kwargs = {
+                # "TableName": 'Soccer-features-dev-Table',
+                # "AttributesToGet": ('MatchID',),
+            # }
+            # [x for x in tlx.util.paginate(ddb.scan, **kwargs)]
