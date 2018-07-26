@@ -1,11 +1,15 @@
 import logging
 import json
-from tlx.dynamodb import json_dumps
+from tlx.dynamodb.aux import json_dumps
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def handler(func):
+def tims(text):
+    print(f"Hello {text}")
+
+
+def proxy_response_handler(func):
     """ A Decorator for lambda functions. The function to be decorated by have two positional
         arguments (event, context) as any lambda handler would.  Decorating you're handler
         allows you to write idomatic python using returns and raising exception.  This handler
@@ -77,12 +81,6 @@ def require_valid_inputs(supplied, required):
     if not required_fields_found(supplied, required):
         msg = f"Invalid input parameters: {list(supplied.keys())}"
         raise APIGException(msg, code=400)
-
-
-def optional_fields_found(params, fields):
-    if params:
-        return fields.intersection(params)
-    return False
 
 
 class APIGException(Exception):
