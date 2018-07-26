@@ -16,7 +16,7 @@ def paginate(method, **kwargs):
             # but we get it sometimes with this:
             # ddb = boto3.client('dynamodb')
             # kwargs = {
-                # "TableName": 'Soccer-features-dev-Table',
-                # "AttributesToGet": ('MatchID',),
+            #     "TableName": 'Soccer-features-dev-Table',
+            #     "AttributesToGet": ('MatchID',),
             # }
             # [x for x in tlx.util.paginate(ddb.scan, **kwargs)]

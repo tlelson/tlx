@@ -11,9 +11,6 @@ branches:
     - master
     - dev
 python:
-  - 2.7
-  - 3.4
-  - 3.5
   - 3.6
 install:
   - pip install flake8
@@ -42,5 +39,5 @@ deploy:
     branch:
       - dev
       - master
-    python: 2.7
+    python: 3.6
   distributions: "sdist bdist_wheel"
