@@ -1,0 +1,11 @@
+# Contributing
+
+Tests:
+```
+pytest
+```
+
+Lint
+```
+
+```
