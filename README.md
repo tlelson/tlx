@@ -4,6 +4,12 @@ Often needed utilities and code.
 
 This is a namespace package.  Submodules sometimes share dependencies but are often used/deployed in to production seperately.
 
+## Install
+
+```bash
+pip install tlx
+```
+
 ## CLI apps
 
 All CLI applications have their own detailed help menus.  Currently available tools are:
