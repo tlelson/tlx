@@ -5,7 +5,6 @@ This module provides functions to make python for lambda more idomatic.
 ## Examples
 
 Use the `proxy_response_handler` to ensure that all exceptions are handled and returned to the caller as 500.
-
 ```python
 from tlx.apigateway import proxy_response_handler
 
@@ -21,7 +20,7 @@ def lambda_handler(event, context):
 ```
 
 Suppose you want to return a specific error code and message raise an `APIGException`.
-```
+```python
 from tlx.apigateway import proxy_response_handler, APIGException
 
 
@@ -39,7 +38,7 @@ def lambda_handler(event, context):
 
 Or, specifcally for input parameter checking use the `require_valid_inputs` to do this
 and return a meaningful error message to the user.
-```
+```python
 from tlx.apigateway import proxy_response_handler, require_valid_inputs
 
 
