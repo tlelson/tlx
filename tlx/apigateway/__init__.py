@@ -1,12 +1,7 @@
 import logging
-import json
 from tlx.dynamodb.aux import json_dumps
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
-
-def tims(text):
-    print(f"Hello {text}")
 
 
 def proxy_response_handler(func):
@@ -32,7 +27,7 @@ def proxy_response_handler(func):
         response = {
             "statusCode": 500,
             "body": {
-                "message": "Error saving data.  Check logs for more info.",
+                "message": "Error",
                 "response": {},
             },
         }
@@ -43,24 +38,24 @@ def proxy_response_handler(func):
             if code:
                 response["statusCode"] = code
 
-        try:  # to get successfull execution
-            event, context = axgs[0], axgs[1]
-            logger.info('event: {}'.format(json_dumps(event)))
-            logger.debug("Received '{resource}' request with params: {queryStringParameters} and body: {body}".format(**event))
+        # If the event is not from the apigateway a KeyError may be raised
+        # and intentionally not caught
+        event, context = axgs[0], axgs[1]
+        logger.info('event: {}'.format(json_dumps(event)))
+        logger.debug("Received '{resource}' request with params: {queryStringParameters} and body: {body}".format(**event))
 
-            response["statusCode"] = "200"
-            response["body"]["message"] = "Success"
+        try:  # to get successfull execution
             response["body"]["response"] = func(event, context)
+            response["body"]["message"] = "Success"
+            response["statusCode"] = 200
 
         # if not, format appropriately for proxy integration
         except APIGException as e:
             setup_error_response(f"Error: {e}", e.code)
-        except json.decoder.JSONDecodeError as e:
-            setup_error_response("Input data is not JSON")
         except Exception as e:  # Unforseen Exception arose
-            # pass  # Returns generic error response for production deployment
-            raise Exception(e)  # For local testing only
-            setup_error_response(f"Error: {e}")  # For remote testing
+            pass  # Returns generic error response for production deployment
+            # raise Exception(e)  # For local testing only
+            # setup_error_response(f"Error: {e}")  # For remote testing
 
         # Final preparation for http reponse
         if response["body"]["response"] is None:

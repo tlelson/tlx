@@ -8,9 +8,9 @@ class Session(boto3.session.Session):
     """Returns an AWS session instance.  If no parameters are provided, keys from `.aws/credentials` 'default' profile are used.
 
         Kwargs (all optional):
-            region (str): An AWS region
             profile (str): A profile with API keys as configured in ~/.aws/credentials file. Not to be used with other parmeters.
                 If your role needs an MFA token you will be prompted for input.
+            region (str): An AWS region
             role (str): AWS Arn of the role the user is assuming. If None, the users identity is used.
             mfa_serial (str): AWS Arn of the users Multi-Factor authentication device.
             mfa_token (str): 6 digit Multi-Factor Authentication code.
@@ -20,7 +20,7 @@ class Session(boto3.session.Session):
             s3client = session.client('s3')
     """
 
-    def __init__(self, region=None, profile=None, role=None, mfa_serial=None, mfa_token=None):
+    def __init__(self, profile=None, region=None, role=None, mfa_serial=None, mfa_token=None):
         if profile and role:
             raise AttributeError("Either a profile should be used OR a role assumed. Not both.")
 
@@ -60,7 +60,7 @@ def _assume_role(role, mfa_serial, mfa_token):
     params = {
         "RoleArn": role,
         "RoleSessionName": 'ecs-deploy-session',
-        "DurationSeconds": 3600 * 8,  # Try 8 hours
+        # "DurationSeconds": 3600, * 8,  # Try 8 hours
         "SerialNumber": mfa_serial,
         "TokenCode": mfa_token
     }
