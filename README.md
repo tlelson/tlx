@@ -16,7 +16,7 @@ All CLI applications have their own detailed help menus.  Currently available to
 
 ### Session
 Use a session to start a session using a profile from `~/.aws/credentials` that is renewable without closing the shell.
-```
+```python
 from tlx.util import Session
 session = Session(profile='Trades')
 logs = session.client('logs')
