@@ -15,6 +15,10 @@ logs = session.client('logs')
 [lg['logGroupName'] for lg in logs.describe_log_groups()['logGroups']]
 ```
 
+*See Submodule docs for more examples.*
+[Api Gateway Module](tlx/apigateway/README.md)
+
+
 ### Batch Upload data to Dynamodb
 ```
 from tlx.dynamodb.batch import load_from_csv
