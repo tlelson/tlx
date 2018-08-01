@@ -10,22 +10,17 @@ def add_key(table, key, item):
     """
 
     key_names = [k for k in key]
-    item_template = {**key, **item}
-    logger.debug(f'submitting item: {item_template}')
+    full_item = {**key, **item}
+    logger.debug(f'submitting item: {full_item}')
 
-    try:
-        logger.info(f"Attempting to add new record for: {key} ")
-        res = table.put_item(
-            Item=item_template,
-            ConditionExpression=f"attribute_not_exists({key_names[0]})",  # TODO fix for items with Partition and Sort key
-        )
-    except Exception as e:
-        msg = f'Failed to add {item_template}: {e}'
-        logger.error(msg)
-        raise APIGException(msg, code=500)
+    logger.info(f"Attempting to add new record for: {key} ")
+    res = table.put_item(
+        Item=full_item,
+        ConditionExpression=f"attribute_not_exists({key_names[0]})",  # TODO fix for items with Partition and Sort key
+    )
 
     logger.info(f"Successfully added new record.")
-    logger.debug(f"{item_template}")
+    logger.debug(f"{full_item}")
     return res['ResponseMetadata']['HTTPStatusCode']
 
 
@@ -38,10 +33,11 @@ def append_to_list_field(table, key, field_to_update, expression_attribute_names
         Args:
             table (boto3 Table):
             key (dict): Primary key for the table. e.g {'matchid': matchid}
-            field_to_update (list): ['providers', '#dataproviderid'].  Variables for substitution should start with a hash and
-                have values defined in `expression_attribute_names`.
-            expression_attribute_names (dict): Expansion of variables names in the field to update. E.g {'#dataproviderid': "OPTA"}
-            new_item (list): To be appended to a list the object must be a list.
+            field_to_update (list): e.g ['providers', '#dataproviderid'].  Variables for substitution should
+                                    start with a hash and have values defined in `expression_attribute_names`.
+            expression_attribute_names (dict): Expansion of variables names in the field to update.
+                                               E.g {'#dataproviderid': "BILL"}
+            new_item (list): To be appended to a list, the object must be a list.
             add_missing_key (bool): Default False. If True add the primary key for the table if it is not found.
                                     Otherwise returns dict of data to be added by user.
 
@@ -52,6 +48,8 @@ def append_to_list_field(table, key, field_to_update, expression_attribute_names
     try:
         str_path = '.'.join(field_to_update)
         # TODO: Consider adding a check for if key exists here rather than in the `_add_new_map_field` call stack
+        # Current model is optimised for frequent updates of existing keys.  If keys are frequently being added
+        # it would be more efficient to try adding the key first and then this method.
         res = table.update_item(
             Key=key,
             UpdateExpression=f"SET {str_path} = list_append(:new_item, {str_path})",
@@ -69,11 +67,11 @@ def append_to_list_field(table, key, field_to_update, expression_attribute_names
     return add_new_map_field(table, key, field_to_update[:-1], field_to_update[-1], expression_attribute_names, new_item, add_missing_key)
 
 
-def add_new_map_field(table, key, path, field_to_add, expression_attribute_names, data, add_missing_key=False):
+def add_new_map_field(table, key, path, field_to_add, expression_attribute_names, data, add_missing_key=False, replace_existing=False):
     """ Adds a new field (field_to_add) to an existing path in a map (path) for a given Primary key (key).
 
-        N.B If the path doesn't exist attempts to create that path.  If the key doesn't exist, will attempt to
-        create IFF add_missing_key=True.
+        N.B If the path doesn't exist, the function attempts to create that path.  If the key doesn't exist,
+        it will attempt to create IFF `add_missing_key=True`.
 
         Args:
             table (boto3 Table):
@@ -85,6 +83,8 @@ def add_new_map_field(table, key, path, field_to_add, expression_attribute_names
             data (any): Value to be saved under `path`+`field_to_add`.  Must be valid datatypes for Dynamodb.
             add_missing_key (bool): Default False. If True add the primary key for the table if it is not found.
                                     Otherwise returns dict of data to be added by user.
+            replace_existing (bool): Default False. If True, the `field_to_add` may exist already.  In the case that
+                                     it does, it is replaced with `data`. If False, an error will be returned.
          Returns:
             int (200)                   - If successfully added item to Dynamodb
             dict {unadded data}         - If the primary key was not found. use `add_key` to add it.
@@ -94,6 +94,10 @@ def add_new_map_field(table, key, path, field_to_add, expression_attribute_names
         return add_key(table, key, field_to_add, data) if add_missing_key else {field_to_add: data}
 
     str_path = '.'.join(path)
+    # Default to error instead of overwrite
+    condition_exp = f"attribute_not_exists({str_path}.{field_to_add}) AND attribute_exists({str_path})"
+    if replace_existing:
+        condition_exp = f"attribute_exists({str_path})"
 
     try:
         res = table.update_item(
@@ -101,25 +105,25 @@ def add_new_map_field(table, key, path, field_to_add, expression_attribute_names
             UpdateExpression=f"SET {str_path}.{field_to_add} = :new_item",  # want dots to expand
             ExpressionAttributeNames=expression_attribute_names,
             ExpressionAttributeValues={":new_item": data},
-            ConditionExpression=f"attribute_not_exists({str_path}.{field_to_add}) AND attribute_exists({str_path})",
+            ConditionExpression=condition_exp,
         )
         logger.info(f"Successfully added new data to: {str_path}.{field_to_add}")
         logger.debug(f'{data}')
         return res['ResponseMetadata']['HTTPStatusCode']
     except table.meta.client.exceptions.ConditionalCheckFailedException as ccfe:
         logger.info(f"Path ({str_path}) not found.")
+    except table.meta.client.exceptions.ClientError as ce:
+        # The document path has changed. Allow it to overwrite next itteration otherwise raise
+        if ce.response['Error']['Code'] in ('ValidationException',):
+            msg = "The document path has changed. Overwriting existing data!"
+            logger.warn(msg)
+            replace_existing = True
+        else:
+            raise ce
 
     # Must remove otherwise boto complains 'unused in expressions' next time
     new_data = {expression_attribute_names.pop(field_to_add, field_to_add): data}
 
     # Recursively try to add until we empty the 'path' variable
-    return add_new_map_field(table, key, path[:-1], path[-1], expression_attribute_names, new_data)
+    return add_new_map_field(table, key, path[:-1], path[-1], expression_attribute_names, new_data, replace_existing=replace_existing)
 
-
-def get_item(table, key):
-    """Get latest item for a given key otherwise returns an empty array"""
-
-    return table.get_item(
-        Key=key,
-        ConsistentRead=True,
-    ).get('Item', [])

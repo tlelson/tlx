@@ -23,7 +23,7 @@ script:
   - pytest
   - bash tests/basic_cli_tests.sh
 before_deploy:
-  - ci/build_deploy.sh
+  - ci/set_pypi_version.sh
   - |
     if [ $TRAVIS_BRANCH == 'master' ];
       then export PYPI_SERVER=$PYPI_PROD;

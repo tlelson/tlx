@@ -16,20 +16,33 @@ All CLI applications have their own detailed help menus.  Currently available to
 - `dynamo-batch-prepare`
 - `dynamo-batch-write`
 
-## Examples
+```bash
+$ dynamo-batch-prepare --help
+Usage: dynamo-batch-prepare [OPTIONS]
 
-### Session
-Use a session to start a session using a profile from `~/.aws/credentials` that is renewable without closing the shell.
-```python
-from tlx.util import Session
-session = Session(profile='Trades')
-logs = session.client('logs')
-[lg['logGroupName'] for lg in logs.describe_log_groups()['logGroups']]
+  DYNAMO BATCH PREPARE (dbp)
+
+  `dynamodb-batch-prepare --help`
+  OR
+  `dbp --help`
+
+  Takes the output of a `scan` operation such as: `aws dynamodb scan --table-name <TableName>` and formats for use
+  by:
+
+  `aws dynamodb batch-write-item --request-items file://output.json`
+
+Options:
+  -d, --dump-file FILENAME  File dumped from dynamodb with.  [required]
+  -n, --table-name TEXT     Table to send data to. Table must exist and key schema must match.  Use `aws dynamodb
+                            describe-table --table-name <TableName>`  [required]
+  -h, --help                Show this message and exit.
 ```
 
+## Examples
 *See Submodule docs for more examples.*
-[Api Gateway Module](tlx/apigateway/README.md)
-[Dynamodb Tools](tlx/dynamodb/README.md)
+- [Utilities](tlx/util/README.md)
+- [Api Gateway Module](tlx/apigateway/README.md)
+- [Dynamodb Tools](tlx/dynamodb/README.md)
 
 ## Light install
 If this grows too large it may become a namespace packge so that parts can be installed easily. But until that time if you need a tool and only that tool, say for a deployment to AWS lambda or GCP App engine, then:
