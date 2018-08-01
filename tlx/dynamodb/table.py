@@ -1,5 +1,4 @@
 import logging
-from tlx.apigateway import APIGException
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -126,4 +125,3 @@ def add_new_map_field(table, key, path, field_to_add, expression_attribute_names
 
     # Recursively try to add until we empty the 'path' variable
     return add_new_map_field(table, key, path[:-1], path[-1], expression_attribute_names, new_data, replace_existing=replace_existing)
-
