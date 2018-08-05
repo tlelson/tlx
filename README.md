@@ -13,27 +13,25 @@ pip install tlx
 All CLI applications have their own detailed help menus.  Currently available tools are:
 
 - `get-aws-creds`
-- `dynamo-batch-prepare`
 - `dynamo-batch-write`
 
 ```bash
-$ dynamo-batch-prepare --help
-Usage: dynamo-batch-prepare [OPTIONS]
+$ dynamo-batch-write --help
+Usage: dynamo-batch-write [OPTIONS]
 
-  DYNAMO BATCH PREPARE (dbp)
+  DYNAMO BATCH WRITE
 
-  `dynamodb-batch-prepare --help`
-  OR
-  `dbp --help`
+  Loads the results of a scan opperation into a table.
 
-  Takes the output of a `scan` operation such as: `aws dynamodb scan --table-name <TableName>` and formats for use
-  by:
-
-  `aws dynamodb batch-write-item --request-items file://output.json`
+  Details:
+  Takes the output of a `scan` operation such as: `aws dynamodb scan --table-name <TableName>`
+  and writes to an existing table. Similar to the `aws dynamodb batch-write-item` command except:
+      - No limit to amount of items in the upload (25 with awscli)
+      - Take the output of a table scan, requiring no reformatting
 
 Options:
-  -d, --dump-file FILENAME  File dumped from dynamodb with.  [required]
-  -n, --table-name TEXT     Table to send data to. Table must exist and key schema must match.  Use `aws dynamodb
+  -d, --dump-file FILENAME  File dumped from dynamodb with a `scan`.  [required]
+  -t, --table TEXT          Table to send data to. Table must exist and key schema must match.  Use `aws dynamodb
                             describe-table --table-name <TableName>`  [required]
   -h, --help                Show this message and exit.
 ```

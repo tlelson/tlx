@@ -26,19 +26,6 @@ def _set_types(v):
     return _func_map[v_key](returned_value)
 
 
-def _batch_write1(table, items):
-    """This batch writer takes `items` from a scan.  Scan results are dictionaries with their keys being
-    the data types.  Changed the form of the scaned item into the form accepted by `put_item`"""
-
-    # TODO: Dont do the type conversion in _pull_values. Just collapse it and use json.dump/load to deal with
-    # floats and ints
-    with table.batch_writer() as batch:
-        for item in items:
-            batch.put_item(
-                Item=_pull_values(item),
-            )
-
-
 def batch_write(table, items):
     with table.batch_writer() as batch:
         for item in items:
@@ -47,7 +34,7 @@ def batch_write(table, items):
             )
 
 
-def load_data(dump_file, table=None):
+def load_scan_dump(dump_file, table=None):
     """
         Loads the results of a scan opperation into a table.
 
@@ -60,8 +47,8 @@ def load_data(dump_file, table=None):
 
     table = get_ddb_table(table)
     items = json.load(dump_file)['Items']
-    # TODO: should run items through _pull_values here instead of inside the batch write
-    _batch_write1(table, items)
+    # TODO: Make this a generator (problem is testing it)
+    batch_write(table, [_pull_values(item) for item in items])
 
 
 def get_ddb_table(table):

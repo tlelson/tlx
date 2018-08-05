@@ -1,6 +1,6 @@
 import sys
 import click
-from tlx.dynamodb.batch import load_data
+from tlx.dynamodb.batch import load_scan_dump
 
 
 @click.command(context_settings=dict(max_content_width=120, help_option_names=['-h', '--help']))
@@ -10,7 +10,7 @@ def dbw(dump_file, table=None):
     """
         DYNAMO BATCH WRITE
 
-        Loads the results of a scan opperation into a table.
+        Loads the results of a scan operation into a table.
 
         \b
         Details:
@@ -21,7 +21,7 @@ def dbw(dump_file, table=None):
     """
 
     try:  # Surpress all exceptions for CLI app
-        load_data(dump_file, table)
+        load_scan_dump(dump_file, table)
     except Exception as e:
         print("{}: {}".format(type(e).__name__, e))
         sys.exit(1)

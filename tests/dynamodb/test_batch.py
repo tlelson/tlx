@@ -24,6 +24,24 @@ class TestBatchLoad(TestCase):
         {"ID": 2, "Name": "Hubert", "Last": "McFuddle"},
     ]
 
+    scan_dump_data = {
+        "Items": [
+            {
+                "ID": {"N": "2"},
+                "Last": {"S": "McFuddle"},
+                "Name": {"S": "Hubert"},
+            },
+            {
+                "ID": {"N": "1"},
+                "Last": {"S": "Jones"},
+                "Name": {"S": "Flojo"},
+            }
+        ],
+        "Count": 2,
+        "ScannedCount": 2,
+        "ConsumedCapacity": None,
+    }
+
     expected_batch_output = [
         {
             'ID': Decimal('1'),
@@ -118,5 +136,34 @@ class TestBatchLoad(TestCase):
             tlx.dynamodb.batch.load_json_dump(path, 'table')
             get_ddb_table.assert_called_once()
             batch_write.assert_called_with('table1', self.expected_batch_output)
+        finally:
+            os.remove(path)
+
+    def test_load_scan_dump(self, batch_write, get_ddb_table):
+        msg = "should format items of dump file correctly for batch upload"
+
+        get_ddb_table.return_value = 'table1'
+
+        # 1.    Get tempfile and write csv data
+        _, path = tempfile.mkstemp()
+        try:
+            # Write to scan style dump file
+            with open(path, 'w') as f:
+                json.dump(self.scan_dump_data, f)
+
+            # 2.    Call function
+            with open(path, 'r') as f:
+                tlx.dynamodb.batch.load_scan_dump(f, 'table1')
+            get_ddb_table.assert_called_once()
+
+            # Check the items sent to batch_write where correct
+            self.assertEqual(batch_write.call_args[0][0], 'table1')
+            self.assertListEqual(
+                sorted(
+                    batch_write.call_args[0][1],
+                    key=lambda x: x['ID']),
+                self.expected_batch_output,
+                msg,
+            )
         finally:
             os.remove(path)
