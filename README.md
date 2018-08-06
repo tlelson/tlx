@@ -1,6 +1,6 @@
 # TLX
 
-Often needed utilities and code.
+Tools for working with AWS.
 
 ## Install
 
