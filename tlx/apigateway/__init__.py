@@ -1,12 +1,14 @@
+import sys
 import logging
+import functools
 from tlx.dynamodb.aux import json_dumps
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def proxy_response_handler(func):
+def proxy_response_handler(func=None, running_local=False, quiet=False):
     """ A Decorator for lambda functions. The function to be decorated by have two positional
-        arguments (event, context) as any lambda handler would.  Decorating you're handler
+        arguments (event, context) as any lambda handler would.  Decorating your handler
         allows you to write idomatic python using returns and raising exception.  This handler
         catches and formats them as proxy response objects suitable for APIG.
 
@@ -21,7 +23,17 @@ def proxy_response_handler(func):
         The decorated function should return data that can be converted to JSON.  This can be a list, dict, string, number or boolean.
         It should raise a APIGException if the user wants to return the error message and modify the return code.  Otherwise all
         other Exceptions are returned as 500 response codes without a detailed error message.
+
+        Set running_local=True if we're running locally (eg. we're not imported/running on AWS Lambda),
+        and Python stack traces will show when exceptions are raised.
+        Example usage: @proxy_response_handler(running_local=__name__=="__main__")
+
+        Set quiet=True to suppress all error output including stack traces (eg. for Prod deployments)
     """
+    if not func:
+        return functools.partial(proxy_response_handler, running_local=running_local)
+
+    @functools.wraps(func)
     def wrapper(*axgs):
         # Setup default response
         response = {
@@ -53,9 +65,13 @@ def proxy_response_handler(func):
         except APIGException as e:
             setup_error_response(f"Error: {e}", e.code)
         except Exception as e:  # Unforseen Exception arose
-            pass  # Returns generic error response for production deployment
-            # raise Exception(e)  # For local testing only
-            # setup_error_response(f"Error: {e}")  # For remote testing
+            if quiet:
+                pass # Returns generic error response for production deployment
+            elif running_local:
+                sys.stderr.write("Local run detected, showing Python Exception stack trace:\n")
+                raise e
+            else:
+                setup_error_response(f"Error: {e}")  # For remote testing
 
         # Final preparation for http reponse
         if response["body"]["response"] is None:
