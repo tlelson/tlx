@@ -6,7 +6,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def proxy_response_handler(func=None, running_local=False, quiet=False):
+def proxy_response_handler(func=None, running_local=False, quiet=True):
     """ A Decorator for lambda functions. The function to be decorated by have two positional
         arguments (event, context) as any lambda handler would.  Decorating your handler
         allows you to write idomatic python using returns and raising exception.  This handler
@@ -28,7 +28,7 @@ def proxy_response_handler(func=None, running_local=False, quiet=False):
         and Python stack traces will show when exceptions are raised.
         Example usage: @proxy_response_handler(running_local=__name__=="__main__")
 
-        Set quiet=True to suppress all error output including stack traces (eg. for Prod deployments)
+        Set quiet=True (default) to suppress all error output including stack traces (eg. for Prod deployments)
     """
     if not func:
         return functools.partial(proxy_response_handler, running_local=running_local)
