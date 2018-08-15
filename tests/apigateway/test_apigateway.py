@@ -36,10 +36,10 @@ class TestProxyResponseHandler(TestCase):
         with self.assertRaises(Exception, msg=msg):
             dummy_handler({}, {})
 
-    def test_raised_exception(self):
+    def test_raised_exception_quiet(self):
         msg = 'A generic exception should return a PROXY RESPONSE with status 500'
 
-        @proxy_response_handler
+        @proxy_response_handler(quiet=True)
         def dummy_handler(event, context):
             raise Exception
 
@@ -47,6 +47,28 @@ class TestProxyResponseHandler(TestCase):
         self.assertEqual(res['statusCode'], 500, msg)
         body = json_loads(res['body'])
         self.assertEqual(body["message"], 'Error', msg)
+
+    def test_raised_exception_verbose(self):
+        msg = 'A exception should return a PROXY RESPONSE with status 500 AND report the exception message'
+
+        @proxy_response_handler(quiet=False)
+        def dummy_handler(event, context):
+            raise Exception('test')
+
+        res = dummy_handler(self.apig_event, {})
+        self.assertEqual(res['statusCode'], 500, msg)
+        body = json_loads(res['body'])
+        self.assertEqual(body["message"], 'Error: test', msg)
+
+    def test_raised_exception_running_local(self):
+        msg = 'When running_local=True the exception should bubble up'
+
+        @proxy_response_handler(running_local=True, quiet=False)
+        def dummy_handler(event, context):
+            raise Exception('test')
+
+        with self.assertRaises(Exception, msg=msg):
+            dummy_handler(self.apig_event, {})
 
     def test_raised_APIGException(self):
         msg = 'Raising an APIGException should return a PROXY RESPONSE with the desired status'
