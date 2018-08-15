@@ -31,7 +31,7 @@ def proxy_response_handler(func=None, running_local=False, quiet=False):
         Set quiet=True to suppress all error output including stack traces (eg. for Prod deployments)
     """
     if not func:
-        return functools.partial(proxy_response_handler, running_local=running_local)
+        return functools.partial(proxy_response_handler, running_local=running_local, quiet=quiet)
 
     @functools.wraps(func)
     def wrapper(*axgs):
