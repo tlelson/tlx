@@ -66,7 +66,7 @@ def proxy_response_handler(func=None, running_local=False, quiet=False):
             setup_error_response(f"Error: {e}", e.code)
         except Exception as e:  # Unforseen Exception arose
             if quiet:
-                pass # Returns generic error response for production deployment
+                pass  # Returns generic error response for production deployment
             elif running_local:
                 sys.stderr.write("Local run detected, showing Python Exception stack trace:\n")
                 raise e
