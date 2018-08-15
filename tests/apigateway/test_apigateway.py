@@ -63,7 +63,7 @@ class TestProxyResponseHandler(TestCase):
     def test_raised_exception_running_local(self):
         msg = 'When running_local=True the exception should bubble up'
 
-        @proxy_response_handler(running_local=True)
+        @proxy_response_handler(running_local=True, quiet=False)
         def dummy_handler(event, context):
             raise Exception('test')
 
