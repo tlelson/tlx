@@ -27,6 +27,15 @@ def _set_types(v):
 
 
 def batch_write(table, items):
+    """
+        Basic Usage:
+        >>> from tlx.dynamodb.batch import batch_write, get_ddb_table
+        >>> table = get_ddb_table('Table-Name')
+        >>> with open('results-20180821-091839.json', 'r') as f:
+        ...     items = json.load(f)
+        >>> batch_write(table, items)
+    """
+
     with table.batch_writer() as batch:
         for item in items:
             batch.put_item(
@@ -95,7 +104,7 @@ def load_from_csv(csv_file, table):
 
     # Decimal Conversion if string field
     try:
-        ddata = [
+        ddata = [  # Not a generator for testing
             {
                 k1: v1
                 for k1, v1 in (
