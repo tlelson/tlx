@@ -82,15 +82,15 @@ def proxy_response_handler(func=None, running_local=False, quiet=True):
     return wrapper
 
 
-def required_fields_found(supplied, required):
-    if supplied:
-        return required.intersection(supplied) == required
-    return False
-
-
 def require_valid_inputs(supplied, required):
-    if not required_fields_found(supplied, required):
-        msg = f"Invalid input parameters: {list(supplied.keys())}"
+    try:
+        missing_parameters = required.difference(supplied)
+    except TypeError:
+        # supplied is not a dict or set
+        missing_parameters = required
+
+    if missing_parameters:
+        msg = f"Invalid input parameters: {missing_parameters}"
         raise APIGException(msg, code=400)
 
 
