@@ -83,10 +83,15 @@ def proxy_response_handler(func=None, running_local=False, quiet=True):
 
 
 def require_valid_inputs(supplied, required):
+    """ Returns None if `supplied` is a superset of `required`.  Raises `APIGException` with
+        error code 400 if not.
+        Bothe params must be an iterable.
+    """
+
     try:
-        missing_parameters = required.difference(supplied)
+        missing_parameters = set(required).difference(supplied)
     except TypeError:
-        # supplied is not a dict or set
+        # supplied is not itterable
         missing_parameters = required
 
     if missing_parameters:
