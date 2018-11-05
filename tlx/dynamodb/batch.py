@@ -1,4 +1,5 @@
 import csv
+import io
 import math
 import json
 import boto3
@@ -84,7 +85,7 @@ def load_from_csv(csv_file, table):
 
     table = get_ddb_table(table)
 
-    with open(csv_file, newline='') as csvfile:
+    with io.open(csv_file, newline='') as csvfile:
         data = list(csv.reader(csvfile))
 
     field_names, types = data[0], data[1]

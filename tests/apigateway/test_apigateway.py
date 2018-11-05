@@ -49,7 +49,7 @@ class TestProxyResponseHandler(TestCase):
 
         @proxy_response_handler
         def dummy_handler(event, context):
-            print(f"received: {(event, context)}")
+            print("received: {(event, context)}".formal(**locals()))
 
         with self.assertRaises(Exception, msg=msg):
             dummy_handler({}, {})
