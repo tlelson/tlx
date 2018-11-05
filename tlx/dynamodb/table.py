@@ -1,6 +1,11 @@
+import sys
 import logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+
+if sys.version_info != (3, 6):
+    raise RuntimeError("This module is not for python <3.6.")
 
 
 def add_key(table, key, item):
@@ -9,8 +14,8 @@ def add_key(table, key, item):
     """
 
     key_names = [k for k in key]
-    full_item = {**key, **item}
-    logger.debug(f'submitting item: {full_item}')
+    full_item = {**key, **item}  # noqa: E999   - only invalid in old pythons
+    logger.debug(f'submitting item: {full_item}')  # noqa: E999   - only invalid in old pythons
 
     logger.info(f"Attempting to add new record for: {key} ")
     res = table.put_item(

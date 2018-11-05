@@ -10,7 +10,7 @@ def paginate(method, **kwargs):
         try:
             for result in page:
                 yield result
-        except TypeError as te:
+        except TypeError:
             pass
             # Dont know what the issue is here
             # but we get it sometimes with this:

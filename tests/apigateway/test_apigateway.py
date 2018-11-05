@@ -22,6 +22,24 @@ class TestRequireFieldsFound(TestCase):
 
         self.assertIsNone(require_valid_inputs(supplied, required), msg)
 
+    def test_bad_params1(self):
+        msg = 'An exception should be raised if a parameter key is not a hashable type (str, int, float)'
+
+        supplied = [{'first': 1, 'nineteenth': 2}]
+        required = {'first'}
+
+        with self.assertRaises(Exception, msg=msg):
+            require_valid_inputs(supplied, required)
+
+    def test_bad_params2(self):
+        msg = 'An exception should be raised if a parameter key is not a hashable type (str, int, float)'
+
+        supplied = [True, None]
+        required = {'first'}
+
+        with self.assertRaises(Exception, msg=msg):
+            require_valid_inputs(supplied, required)
+
 
 class TestProxyResponseHandler(TestCase):
     apig_event = {'resource': 'yoyo', 'queryStringParameters': None, 'body': None}
@@ -31,7 +49,7 @@ class TestProxyResponseHandler(TestCase):
 
         @proxy_response_handler
         def dummy_handler(event, context):
-            print(f"received: {(event, context)}")
+            print("received: {(event, context)}".formal(**locals()))
 
         with self.assertRaises(Exception, msg=msg):
             dummy_handler({}, {})

@@ -63,7 +63,7 @@ def proxy_response_handler(func=None, running_local=False, quiet=True):
 
         # if not, format appropriately for proxy integration
         except APIGException as e:
-            setup_error_response(f"Error: {e}", e.code)
+            setup_error_response("Error: {e}".format(e=e), e.code)
         except Exception as e:  # Unforseen Exception arose
             if quiet:
                 pass  # Returns generic error response for production deployment
@@ -71,26 +71,31 @@ def proxy_response_handler(func=None, running_local=False, quiet=True):
                 sys.stderr.write("Local run detected, showing Python Exception stack trace:\n")
                 raise e
             else:
-                setup_error_response(f"Error: {e}")  # For remote testing
+                setup_error_response("Error: {e}".format(e=e))  # For remote testing
 
         # Final preparation for http reponse
         if response["body"]["response"] is None:
             del response["body"]["response"]
         response["body"] = json_dumps(response["body"])
-        logger.info(f"Returning repsonse: {response}")
+        logger.info("Returning repsonse: {response}".format(**locals()))
         return response
     return wrapper
 
 
-def required_fields_found(supplied, required):
-    if supplied:
-        return required.intersection(supplied) == required
-    return False
-
-
 def require_valid_inputs(supplied, required):
-    if not required_fields_found(supplied, required):
-        msg = f"Invalid input parameters: {list(supplied.keys())}"
+    """ Returns None if `supplied` is a superset of `required`.  Raises `APIGException` with
+        error code 400 if not.
+        Bothe params must be an iterable.
+    """
+
+    try:
+        missing_parameters = set(required).difference(supplied)
+    except TypeError:
+        # supplied is not itterable
+        missing_parameters = required
+
+    if missing_parameters:
+        msg = "Invalid input parameters: {missing_parameters}".format(**locals())
         raise APIGException(msg, code=400)
 
 

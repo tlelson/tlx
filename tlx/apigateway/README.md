@@ -1,10 +1,10 @@
 # APIGateway Modules
 
-This module provides functions to make python for lambda more idomatic.
+This module provides functions to make python for AWS lambda more idomatic.
 
 ## Examples
 
-Use the `proxy_response_handler` to ensure that all exceptions are handled and returned to the caller as 500.
+Use the `proxy_response_handler` to ensure that all exceptions are handled and returned to the caller as 500 (rather than the ambiguous default).
 ```python
 from tlx.apigateway import proxy_response_handler
 
@@ -19,7 +19,7 @@ def lambda_handler(event, context):
     return get_user(params['id'])
 ```
 
-Suppose you want to return a specific error code and message raise an `APIGException`.
+Suppose you want to return a specific error code and message; raise an `APIGException`.
 ```python
 from tlx.apigateway import proxy_response_handler, APIGException
 
@@ -36,7 +36,8 @@ def lambda_handler(event, context):
 
 ```
 
-Or, specifcally for input parameter checking use the `require_valid_inputs` to do this
+There is a function that abstracts away input parameter checking and raises a `APIGException` for you.
+In this case use the `require_valid_inputs` function.
 and return a meaningful error message to the user.
 ```python
 from tlx.apigateway import proxy_response_handler, require_valid_inputs

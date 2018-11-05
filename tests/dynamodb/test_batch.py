@@ -1,11 +1,16 @@
 import os
+import sys
 import tempfile
 import json
 from decimal import Decimal
 from unittest import TestCase
-from unittest.mock import patch
 from textwrap import dedent
 import tlx.dynamodb.batch
+
+if sys.version_info < (3, 3):
+    from mock import patch
+else:
+    from unittest.mock import patch
 
 
 @patch('tlx.dynamodb.batch.get_ddb_table', autospec=True)
@@ -69,7 +74,7 @@ class TestBatchLoad(TestCase):
 
             # 2.    Check output
             tlx.dynamodb.batch.load_from_csv(path, 'table')
-            get_ddb_table.assert_called_once()
+            assert get_ddb_table.call_count == 1
             batch_write.assert_called_with('table1', self.expected_batch_output)
         finally:
             os.remove(path)
@@ -87,7 +92,7 @@ class TestBatchLoad(TestCase):
 
             # 2.    Check output
             tlx.dynamodb.batch.load_from_csv(path, 'table')
-            get_ddb_table.assert_called_once()
+            assert get_ddb_table.call_count == 1
             batch_write.assert_called_with('table1', self.expected_batch_output)
         finally:
             os.remove(path)
@@ -114,7 +119,7 @@ class TestBatchLoad(TestCase):
             with self.assertRaises(Exception, msg=msg):
                 tlx.dynamodb.batch.load_from_csv(path, 'table')
 
-            get_ddb_table.assert_called_once()
+            assert get_ddb_table.call_count == 1
             assert not batch_write.called, 'batch_write should not have been called'
         finally:
             os.remove(path)
@@ -134,7 +139,7 @@ class TestBatchLoad(TestCase):
 
             # 2.    Check output
             tlx.dynamodb.batch.load_json_dump(path, 'table')
-            get_ddb_table.assert_called_once()
+            assert get_ddb_table.call_count == 1
             batch_write.assert_called_with('table1', self.expected_batch_output)
         finally:
             os.remove(path)
@@ -154,7 +159,7 @@ class TestBatchLoad(TestCase):
             # 2.    Call function
             with open(path, 'r') as f:
                 tlx.dynamodb.batch.load_scan_dump(f, 'table1')
-            get_ddb_table.assert_called_once()
+            assert get_ddb_table.call_count == 1
 
             # Check the items sent to batch_write where correct
             self.assertEqual(batch_write.call_args[0][0], 'table1')
