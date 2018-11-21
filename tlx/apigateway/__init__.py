@@ -7,10 +7,10 @@ logger.setLevel(logging.INFO)
 
 
 def proxy_response_handler(func=None, running_local=False, quiet=True):
-    """ A Decorator for lambda functions. The function to be decorated by have two positional
-        arguments (event, context) as any lambda handler would.  Decorating your handler
-        allows you to write idomatic python using returns and raising exception.  This handler
-        catches and formats them as proxy response objects suitable for APIG.
+    """ A Decorator for lambda functions. The function to be decorated by have two positional arguments
+        (event, context) as any lambda handler would.  Decorating your handler allows you to write idomatic python
+        using returns and raising exception.  This handler catches and formats them as proxy response objects
+        suitable for APIG.
 
         This function does the following:
             - prints the received `event` to the debug logs
@@ -20,9 +20,10 @@ def proxy_response_handler(func=None, running_local=False, quiet=True):
             - Forseen exceptions ARE propogated back to the user in the `response.message` field
                 (Developers should raise APIGException if they want the message to return)
 
-        The decorated function should return data that can be converted to JSON.  This can be a list, dict, string, number or boolean.
-        It should raise a APIGException if the user wants to return the error message and modify the return code.  Otherwise all
-        other Exceptions are returned as 500 response codes without a detailed error message.
+        The decorated function should return data that can be converted to JSON.  This can be a list, dict, string,
+        number or boolean.  It should raise a APIGException if the user wants to return the error message and modify
+        the return code.  Otherwise all other Exceptions are returned as 500 response codes without a detailed error
+        message.
 
         Set running_local=True if we're running locally (eg. we're not imported/running on AWS Lambda),
         and Python stack traces will show when exceptions are raised.
