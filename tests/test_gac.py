@@ -1,5 +1,5 @@
-from click.testing import CliRunner
-from tlx.util.cli_apps.get_aws_creds import main as get_aws_creds
+# from click.testing import CliRunner
+# from tlx.util.cli_apps.get_aws_creds import main as get_aws_creds
 
 
 def test_hello_world():

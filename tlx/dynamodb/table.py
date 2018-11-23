@@ -64,7 +64,7 @@ def append_to_list_field(table, key, field_to_update, expression_attribute_names
         logger.info(f"Successfully added new odds to: {str_path}")
         logger.debug(f'{new_item}')
         return res['ResponseMetadata']['HTTPStatusCode']
-    except table.meta.client.exceptions.ConditionalCheckFailedException as ccfe:
+    except table.meta.client.exceptions.ConditionalCheckFailedException:
         # Table missing some amount of structure
         logger.info(f"field not found: {str_path}")
 
@@ -114,7 +114,7 @@ def add_new_map_field(table, key, path, field_to_add, expression_attribute_names
         logger.info(f"Successfully added new data to: {str_path}.{field_to_add}")
         logger.debug(f'{data}')
         return res['ResponseMetadata']['HTTPStatusCode']
-    except table.meta.client.exceptions.ConditionalCheckFailedException as ccfe:
+    except table.meta.client.exceptions.ConditionalCheckFailedException:
         logger.info(f"Path ({str_path}) not found.")
     except table.meta.client.exceptions.ClientError as ce:
         # The document path has changed. Allow it to overwrite next itteration otherwise raise
