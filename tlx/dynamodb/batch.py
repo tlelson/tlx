@@ -37,11 +37,27 @@ def batch_write(table, items):
         >>> batch_write(table, items)
     """
 
+    table = get_ddb_table(table)
+
     with table.batch_writer() as batch:
         for item in items:
             batch.put_item(
                 Item=item,
             )
+
+
+def batch_delete(table, item_keys):
+    """
+        item_keys must be a list of dictionary of the keys required by the Table.
+        e.g for a single key table: [{'id': 001, 'id': 002, ...}]
+        for tables with a sort key, that must be included.
+    """
+
+    table = get_ddb_table(table)
+
+    with table.batch_writer() as batch:
+        for item_key in item_keys:
+            batch.delete_item(Key=item_key)
 
 
 def load_scan_dump(dump_file, table=None):
@@ -59,20 +75,6 @@ def load_scan_dump(dump_file, table=None):
     items = json.load(dump_file)['Items']
     # TODO: Make this a generator (problem is testing it)
     batch_write(table, [_pull_values(item) for item in items])
-
-
-def get_ddb_table(table):
-    """Takes either a string or an existing boto3 Table object.  If neither raises Exception"""
-
-    try:  # test is boto3 Table object
-        _ = table.name  # noqa: F841
-    except AttributeError:
-        if isinstance(table, str):
-            dynamodb = boto3.resource('dynamodb')
-            table = dynamodb.Table(table)
-        else:
-            raise Exception("Table must be either a boto3 Table object or a string not: {}".format(type(table)))
-    return table
 
 
 def load_from_csv(csv_file, table):
@@ -142,3 +144,18 @@ def load_json_dump(file_name, table_name, primary_key=False):
             i[primary_key] = get_uuid()
 
     batch_write(table, items)
+
+
+def get_ddb_table(table):
+    """Takes either a string or an existing boto3 Table object.  If neither raises Exception"""
+
+    try:  # test is boto3 Table object
+        _ = table.name  # noqa: F841
+    except AttributeError:
+        if isinstance(table, str):
+            dynamodb = boto3.resource('dynamodb')
+            table = dynamodb.Table(table)
+        else:
+            raise Exception(("Table must be either a boto3 Table object"
+                             "or a string not: {}").format(type(table)))
+    return table
