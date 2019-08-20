@@ -4,6 +4,7 @@ from tlx.dynamodb.batch import batch_delete, get_ddb_table
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+# Bellow thows a syntax error in python 2.7. no idea why
 # py_version = float(f"{sys.version_info.major}.{sys.version_info.minor}")
 py_version = float("{}.{}".format(sys.version_info.major, sys.version_info.minor))
 
