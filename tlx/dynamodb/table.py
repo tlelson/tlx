@@ -4,7 +4,8 @@ from tlx.dynamodb.batch import batch_delete, get_ddb_table
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-py_version = float(f"{sys.version_info.major}.{sys.version_info.minor}")
+# py_version = float(f"{sys.version_info.major}.{sys.version_info.minor}")
+py_version = float("{}.{}".format(sys.version_info.major, sys.version_info.minor))
 
 if py_version < 3.6:
     raise RuntimeError("This module is not for python <3.6.")
