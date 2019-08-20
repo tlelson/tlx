@@ -1,4 +1,3 @@
-import boto3
 import sys
 import logging
 from tlx.dynamodb.batch import batch_delete, get_ddb_table
@@ -147,5 +146,3 @@ def clear_table(table):
     table_keys = [key['AttributeName'] for key in table.key_schema]
     all_ids = ({key: r[key] for key in table_keys} for r in table.scan()['Items'])
     batch_delete(table, all_ids)
-
-
