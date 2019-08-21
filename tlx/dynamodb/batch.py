@@ -5,7 +5,7 @@ import json
 import boto3
 from decimal import Decimal
 from collections import defaultdict
-from tlx.util.common import get_uuid
+from tlx.util import get_uuid
 
 
 def _pull_values(item):
