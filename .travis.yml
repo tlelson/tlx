@@ -39,5 +39,5 @@ deploy:
     branch:
       - dev
       - master
-    python: 2.7
+    python: 3.6
   distributions: "sdist bdist_wheel"
