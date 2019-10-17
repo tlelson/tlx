@@ -1,5 +1,7 @@
 # TLX
 
+[![Build Status](https://travis-ci.org/eL0ck/tlx.svg?branch=master)](https://travis-ci.org/eL0ck/tlx)
+
 Tools for working with AWS.
 
 ## Install
