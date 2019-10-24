@@ -1,6 +1,6 @@
 def paginate(method, **kwargs):
-    """ Automatically paginates through result lists regardless of what type of marker/token/continuation 
-        AWS decided to use on that service. Will raise `OperationNotPageableError` if the operation is 
+    """ Automatically paginates through result lists regardless of what type of marker/token/continuation
+        AWS decided to use on that service. Will raise `OperationNotPageableError` if the operation is
         not pagable.
 
         e.g Get all Log groups rather than just the first 50

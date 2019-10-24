@@ -8,8 +8,9 @@ from tlx.util import Session
 
 @click.command(context_settings=dict(max_content_width=120))
 @click.option('--profile', '-p', default='default', help="A profile defined in `~/.aws/credentials`.  If it requires an MFA token a prompt will be given")
+@click.option('--mfa-token', '-t', default=None, help="provide the token rather than using STDIN.")
 @click.option('--quiet', default=False, is_flag=True, help='If using the outputs directly, see --help.')
-def main(profile, quiet):
+def main(profile, mfa_token, quiet):
     """
         GET AWS CREDS (gac):
 
@@ -48,7 +49,7 @@ def main(profile, quiet):
     """
 
     try:
-        session = Session(profile=profile)
+        session = Session(profile=profile, mfa_token=mfa_token)
         creds = session.get_session_creds()
     except Exception as e:
         print("{}: {}".format(type(e).__name__, e))

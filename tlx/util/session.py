@@ -1,3 +1,4 @@
+import os
 import boto3
 import logging
 from botocore.credentials import DeferredRefreshableCredentials
@@ -24,9 +25,6 @@ class Session(boto3.session.Session):
         if profile and role:
             raise AttributeError("Either a profile should be used OR a role assumed. Not both.")
 
-        if (mfa_serial and not mfa_token) or (mfa_token and not mfa_serial):
-            raise AttributeError("If using MFA, provide both a serial and a token.")
-
         params = {
             'region_name': region,
         }
@@ -42,11 +40,15 @@ class Session(boto3.session.Session):
             params['profile_name'] = profile
 
         # Get temp session even if running default (to force use of MFA)
-        profile_mfa = get_mfa_serial(profile)
+        profile_mfa_serial = get_mfa_serial(profile)
 
-        if profile_mfa:
-            token = input(f"Enter the MFA Token for {profile_mfa}: ")
-            creds = boto3.client('sts').get_session_token(SerialNumber=profile_mfa, TokenCode=token)['Credentials']
+        if profile_mfa_serial:
+            if not mfa_token:
+                mfa_token = input(f"Enter the MFA Token for {profile_mfa_serial}: ")
+            creds = boto3.client('sts').get_session_token(
+                SerialNumber=profile_mfa_serial,
+                TokenCode=mfa_token,
+            )['Credentials']
             params.update({
                 'aws_access_key_id': creds['AccessKeyId'],
                 'aws_secret_access_key': creds['SecretAccessKey'],
