@@ -40,6 +40,18 @@ class Session(boto3.session.Session):
             })
         elif profile:
             params['profile_name'] = profile
+
+        # Get temp session even if running default (to force use of MFA)
+        profile_mfa = get_mfa_serial(profile)
+
+        if profile_mfa:
+            token = input(f"Enter the MFA Token for {profile_mfa}: ")
+            creds = boto3.client('sts').get_session_token(SerialNumber=profile_mfa, TokenCode=token)['Credentials']
+            params.update({
+                'aws_access_key_id': creds['AccessKeyId'],
+                'aws_secret_access_key': creds['SecretAccessKey'],
+                'aws_session_token': creds['SessionToken'],
+            })
         try:
             boto3.session.Session.__init__(self, **{k: v for k, v in params.items() if v})
         except ClientError as e:
@@ -53,6 +65,26 @@ class Session(boto3.session.Session):
             creds = creds.get_frozen_credentials()
 
         return creds
+
+
+def get_mfa_serial(profile):
+    """Finds users mfa_serial from ~/.aws/credentials"""
+
+    profile = profile or 'default'
+    correct_profile = False
+
+    with open(os.path.expanduser('~/.aws/credentials'), 'r') as f:
+        for line in f:
+            if line.startswith(f"[{profile}]"):
+                correct_profile = True
+            elif correct_profile and line.startswith('mfa_serial'):
+                return line.split('=')[-1].strip()
+            elif line == '\n':
+                if correct_profile:
+                    return None  # This profile doesn't have mfa_serial
+        else:
+            msg = f"Profile '{profile}' not found.  Typo?"
+            raise Exception(msg)
 
 
 def _assume_role(role, mfa_serial, mfa_token):
