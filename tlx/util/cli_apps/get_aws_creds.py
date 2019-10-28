@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 import click
+import os
 import sys
 from tlx.util import Session
 
@@ -47,6 +48,11 @@ def main(profile, mfa_token, quiet):
                 done
             }
     """
+
+    # Issue #15 - We may be trying to assume another role from a
+    # shell that has previously had its temporyary variables populated
+    del os.environ['AWS_SECRET_ACCESS_KEY']
+    del os.environ['AWS_ACCESS_KEY_ID']
 
     try:
         session = Session(profile=profile, mfa_token=mfa_token)
