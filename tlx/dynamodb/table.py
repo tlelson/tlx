@@ -1,10 +1,14 @@
 import sys
 import logging
+from tlx.dynamodb.batch import batch_delete, get_ddb_table
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+# Bellow thows a syntax error in python 2.7. no idea why
+# py_version = float(f"{sys.version_info.major}.{sys.version_info.minor}")
+py_version = float("{}.{}".format(sys.version_info.major, sys.version_info.minor))
 
-if sys.version_info != (3, 6):
+if py_version < 3.6:
     raise RuntimeError("This module is not for python <3.6.")
 
 
@@ -130,3 +134,17 @@ def add_new_map_field(table, key, path, field_to_add, expression_attribute_names
 
     # Recursively try to add until we empty the 'path' variable
     return add_new_map_field(table, key, path[:-1], path[-1], expression_attribute_names, new_data, replace_existing=replace_existing)
+
+
+def clear_table(table):
+    """NOT TESTED with Primary and Sort Key Tables !!!
+        TODO:
+            - test on multikey tables
+            - make cli app for it
+    """
+
+    table = get_ddb_table(table)
+
+    table_keys = [key['AttributeName'] for key in table.key_schema]
+    all_ids = ({key: r[key] for key in table_keys} for r in table.scan()['Items'])
+    batch_delete(table, all_ids)
