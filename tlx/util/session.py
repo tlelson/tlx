@@ -74,26 +74,35 @@ def get_mfa_serial(profile):
 
     profile = profile or 'default'
     correct_profile = False
+    is_user_profile = None  # Should return None if Role profile
+    identified_mfa_serial = None
 
     with open(os.path.expanduser('~/.aws/credentials'), 'r') as f:
         for line in f:
             if line.startswith(f"[{profile}]"):
                 correct_profile = True
             elif correct_profile and line.startswith('mfa_serial'):
-                return line.split('=')[-1].strip()
+                identified_mfa_serial = line.split('=')[-1].strip()
+            elif correct_profile and line.startswith('aws_access_key_id'):
+                is_user_profile = True
             elif line == '\n':
                 if correct_profile:
-                    return None  # This profile doesn't have mfa_serial
+                    break  # No need to search futher
         else:
             msg = f"Profile '{profile}' not found.  Typo?"
             raise Exception(msg)
 
+    if is_user_profile:
+        return identified_mfa_serial
+    # Otherwise we have found a Role or other that will automatically pick
+    # up the MFA by boto
+    return None
 
 def _assume_role(role, mfa_serial, mfa_token):
     # TODO: Check for HTTP fail
     params = {
         "RoleArn": role,
-        "RoleSessionName": 'ecs-deploy-session',
+        "RoleSessionName": role,
         # "DurationSeconds": 3600, * 8,  # Try 8 hours
         "SerialNumber": mfa_serial,
         "TokenCode": mfa_token
