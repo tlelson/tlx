@@ -98,6 +98,7 @@ def get_mfa_serial(profile):
     # up the MFA by boto
     return None
 
+
 def _assume_role(role, mfa_serial, mfa_token):
     # TODO: Check for HTTP fail
     params = {
