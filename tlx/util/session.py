@@ -1,6 +1,7 @@
 import os
 import boto3
 import logging
+from getpass import getpass
 from botocore.credentials import DeferredRefreshableCredentials
 from botocore.exceptions import ClientError
 
@@ -44,7 +45,7 @@ class Session(boto3.session.Session):
 
         if profile_mfa_serial:
             if not mfa_token:
-                mfa_token = input(f"Enter the MFA Token for {profile_mfa_serial}: ")
+                mfa_token = getpass(f'Enter MFA code for {profile_mfa_serial}:')
             creds = boto3.client('sts').get_session_token(
                 SerialNumber=profile_mfa_serial,
                 TokenCode=mfa_token,

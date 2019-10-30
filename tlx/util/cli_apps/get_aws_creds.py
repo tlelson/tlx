@@ -9,9 +9,8 @@ from tlx.util import Session
 
 @click.command(context_settings=dict(max_content_width=120))
 @click.option('--profile', '-p', default='default', help="A profile defined in `~/.aws/credentials`.  If it requires an MFA token a prompt will be given")
-@click.option('--mfa-token', '-t', default=None, help="provide the token rather than using STDIN.")
 @click.option('--quiet', default=False, is_flag=True, help='If using the outputs directly, see --help.')
-def main(profile, mfa_token, quiet):
+def main(profile, quiet):
     """
         GET AWS CREDS (gac):
 
@@ -23,8 +22,6 @@ def main(profile, mfa_token, quiet):
             - AWS_SESSION_TOKEN
 
         Your aws credentials file (default: `~/.aws/credentials`) should be configured like so:
-        \b
-        Configure `credentials` like so:
 
         \b
             [profilename]
@@ -47,6 +44,13 @@ def main(profile, mfa_token, quiet):
                     eval "${i}";
                 done
             }
+
+
+        Or alternatively, send the variables to a file and source them from your profile so that all terminal sessions receive the same temporary credentials:
+
+            \b
+            $ get-aws-creds --quiet > /tmp/awscreds
+            $ source /tmp/awscreds
     """
 
     # Issue #15 - We may be trying to assume another role from a
@@ -57,7 +61,7 @@ def main(profile, mfa_token, quiet):
         del os.environ['AWS_ACCESS_KEY_ID']
 
     try:
-        session = Session(profile=profile, mfa_token=mfa_token)
+        session = Session(profile=profile)
         creds = session.get_session_creds()
     except Exception as e:
         print("{}: {}".format(type(e).__name__, e))
