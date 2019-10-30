@@ -51,8 +51,10 @@ def main(profile, mfa_token, quiet):
 
     # Issue #15 - We may be trying to assume another role from a
     # shell that has previously had its temporyary variables populated
-    del os.environ['AWS_SECRET_ACCESS_KEY']
-    del os.environ['AWS_ACCESS_KEY_ID']
+    if 'AWS_SECRET_ACCESS_KEY' in os.environ:
+        del os.environ['AWS_SECRET_ACCESS_KEY']
+    if 'AWS_ACCESS_KEY_ID' in os.environ:
+        del os.environ['AWS_ACCESS_KEY_ID']
 
     try:
         session = Session(profile=profile, mfa_token=mfa_token)
