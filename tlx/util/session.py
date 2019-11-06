@@ -20,6 +20,9 @@ class Session(boto3.session.Session):
         Example:
             session = Session()
             s3client = session.client('s3')
+
+
+        NB: If you already have AWS environment variables in the root shell they will take precedence. Override them by specifing any arguments.
     """
 
     def __init__(self, profile=None, region=None, role=None, mfa_serial=None, mfa_token=None):
@@ -30,22 +33,26 @@ class Session(boto3.session.Session):
             'region_name': region,
         }
 
-        if role:
+        # 1. Allow pass through if env vars already exist - Dont need extra params boto will get them
+        temp_creds_already_exist = len(
+            {'AWS_SECRET_ACCESS_KEY', 'AWS_ACCESS_KEY_ID', 'AWS_SESSION_TOKEN'}.intersection(os.environ)
+        ) == 3
+        if temp_creds_already_exist:
+            pass  # this is all we need  TODO: test on expired ones
+
+        # 2. If assuming a role get temp creds
+        if role:  # ! Not `elif` because role should override
             creds = _assume_role(role, mfa_serial, mfa_token)
             params.update({
                 'aws_access_key_id': creds['AccessKeyId'],
                 'aws_secret_access_key': creds['SecretAccessKey'],
                 'aws_session_token': creds['SessionToken'],
             })
-        elif profile:
-            params['profile_name'] = profile
-
-        # Get temp session even if running default (to force use of MFA)
-        profile_mfa_serial = get_mfa_serial(profile)
-
+        # 4. If pofile is user profile and has mfa, populate env var params like role
+        profile_mfa_serial = get_mfa_serial_if_user(profile) if profile and not temp_creds_already_exist else None
         if profile_mfa_serial:
             if not mfa_token:
-                mfa_token = getpass(f'Enter MFA code for {profile_mfa_serial}:')
+                mfa_token = getpass(f'Enter MFA code for {profile_mfa_serial}: ')
             creds = boto3.client('sts').get_session_token(
                 SerialNumber=profile_mfa_serial,
                 TokenCode=mfa_token,
@@ -55,6 +62,11 @@ class Session(boto3.session.Session):
                 'aws_secret_access_key': creds['SecretAccessKey'],
                 'aws_session_token': creds['SessionToken'],
             })
+
+        # 3. If profile add it to input params
+        elif profile:
+            params['profile_name'] = profile
+
         try:
             boto3.session.Session.__init__(self, **{k: v for k, v in params.items() if v})
         except ClientError as e:
@@ -70,7 +82,7 @@ class Session(boto3.session.Session):
         return creds
 
 
-def get_mfa_serial(profile):
+def get_mfa_serial_if_user(profile):
     """Finds users mfa_serial from ~/.aws/credentials"""
 
     profile = profile or 'default'
@@ -101,11 +113,9 @@ def get_mfa_serial(profile):
 
 
 def _assume_role(role, mfa_serial, mfa_token):
-    # TODO: Check for HTTP fail
     params = {
         "RoleArn": role,
         "RoleSessionName": role,
-        # "DurationSeconds": 3600, * 8,  # Try 8 hours
         "SerialNumber": mfa_serial,
         "TokenCode": mfa_token
     }
