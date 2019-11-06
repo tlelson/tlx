@@ -12,23 +12,37 @@ from tlx.util import Session
 @click.option('--quiet', default=False, is_flag=True, help='If using the outputs directly, see --help.')
 def main(profile, quiet):
     """
-        GET AWS CREDS (gac):
+        GET AWS CREDS (GAC):
 
-        Gets temporary AWS session from a profile.  Allows you to export into your shell and run tools expecting the AWS standard environment variables. Namely:
+        Gets temporary AWS session from a profile (user or role).  Allows you to export into your shell and run tools expecting the AWS standard environment variables. Namely:
 
         \b
             - AWS_ACCESS_KEY_ID
             - AWS_SECRET_ACCESS_KEY
             - AWS_SESSION_TOKEN
 
-        Your aws credentials file (default: `~/.aws/credentials`) should be configured like so:
+        Your aws credentials file (default: `~/.aws/credentials`) should be configured as follows:
+
+        A Role profile would look like:
 
         \b
-            [profilename]
+            [roleprofilename]
             region = us-east-2
-            role_arn = arn:aws:iam::************:role/Demo-StackCreator
-            mfa_serial = arn:aws:iam::************:mfa/IAM-F.Name
+            role_arn = arn:aws:iam::************:role/<IAM_Role_name>
+            mfa_serial = arn:aws:iam::<AccountID>:mfa/<IAM_user_name>
             source_profile = default
+
+        Or a user profile might look like:
+
+        \b
+            [userprofilename]
+            aws_access_key_id =  AKIA****************
+            aws_secret_access_key = gMFRKAaeFM0*****************************
+            mfa_serial = arn:aws:iam::<AccountID>:mfa/<IAM_user_name>
+            region = ap-southeast-2
+
+        Notice that the user profile contains `mfa_serial`.  This is not standard aws config however it is supported by GAC.  If it is available, GAC will use it to get temporary session tokens by requesting your associated MFA code.  This is useful for when your user has higher account priviledges that require MFA auth.
+
 
         Returns: commands to copy to your shell terminal
 
