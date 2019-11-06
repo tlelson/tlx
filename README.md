@@ -38,7 +38,17 @@ Options:
   -h, --help                Show this message and exit.
 ```
 
-## Examples
+## Documentation
+
+### Function Summary
+
+| function | description |
+|---| --- |
+| get-aws-creds | returns temporary session credentials. Locally mock AWS runtime environments, debugging IAM etc |
+| dynamo-batch-write | lods scan results into a dynamo table.  Much better than `awscli` option |
+|ensure_http_success| used in lambda proxies for API Gateway|
+
+
 *See Submodule docs for more examples.*
 - [Utilities](tlx/util/README.md)
 - [Api Gateway Module](tlx/apigateway/README.md)
