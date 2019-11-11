@@ -137,7 +137,11 @@ def add_new_map_field(table, key, path, field_to_add, expression_attribute_names
 
 
 def clear_table(table):
-    """NOT TESTED with Primary and Sort Key Tables !!!
+    """ in Alpha
+
+        - WILL IMMEDIATELY DELETE ALL ITEMS WITHOUT CONFIRMATION !
+
+        NOT TESTED with Primary and Sort Key Tables !!!
         TODO:
             - test on multikey tables
             - make cli app for it

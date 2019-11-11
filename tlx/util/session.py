@@ -53,7 +53,9 @@ class Session(boto3.session.Session):
         if profile_mfa_serial:
             if not mfa_token:
                 mfa_token = getpass(f'Enter MFA code for {profile_mfa_serial}: ')
-            creds = boto3.client('sts').get_session_token(
+
+            user_base_session = boto3.session.Session(profile_name=profile)
+            creds = user_base_session.client('sts').get_session_token(
                 SerialNumber=profile_mfa_serial,
                 TokenCode=mfa_token,
             )['Credentials']
