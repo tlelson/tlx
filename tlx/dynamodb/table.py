@@ -1,5 +1,6 @@
 import sys
 import logging
+from tlx.util import paginate
 from tlx.dynamodb.batch import batch_delete, get_ddb_table
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -148,7 +149,8 @@ def clear_table(table):
     """
 
     table = get_ddb_table(table)
+    ddb = table.meta.client
 
     table_keys = [key['AttributeName'] for key in table.key_schema]
-    all_ids = ({key: r[key] for key in table_keys} for r in table.scan()['Items'])
+    all_ids = ({key: r[key] for key in table_keys} for r in paginate(ddb.scan, TableName=table.name))
     batch_delete(table, all_ids)
