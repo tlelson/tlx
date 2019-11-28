@@ -40,13 +40,21 @@ Options:
 
 ## Documentation
 
-### Function Summary
+### CLI tools
+Tools that should be in the `awscli` but aren't or don't function well.  All have `--help` for details.
 
 | function | description |
 |---| --- |
-| get-aws-creds | returns temporary session credentials. Locally mock AWS runtime environments, debugging IAM etc |
-| dynamo-batch-write | lods scan results into a dynamo table.  Much better than `awscli` option |
-|ensure_http_success| used in lambda proxies for API Gateway|
+| `get-aws-creds` | returns temporary session credentials. Locally mock AWS runtime environments, debugging IAM etc |
+| `dynamo-batch-write` | loads scan results into a dynamo table.  Much better than `awscli` option |
+
+### Module Summary
+Import these in a python program or shell.
+
+| function | description |
+|---| --- |
+| `tlx.dynamodb.table` | `clear_table` + other functions for dealing with nested data reliably |
+| `tlx.dynamodb.batch` | batch table operations: `load_from_csv`, `load_json_dump`, `load_scan_dump` + more |
 
 
 *See Submodule docs for more examples.*
@@ -55,10 +63,10 @@ Options:
 - [Dynamodb Tools](tlx/dynamodb/README.md)
 
 ## Light install
-If this grows too large it may become a namespace packge so that parts can be installed easily. But until that time if you need a tool and only that tool, say for a deployment to AWS lambda or GCP App engine, then:
+If this grows too large it may become a namespace package so that parts can be installed easily. But until that time if you need a tool and only that tool, say for a deployment to WAS lambda or GAP App engine, then:
 
 1.  Do a local install without dependencies:
 `pip install --no-deps -t package/location/ tlx`
-2.  Remove all the things you dont need
+2.  Remove all the things you don't need
 3.  Run your project and install the dependencies as above until it works.
 
