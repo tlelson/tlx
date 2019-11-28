@@ -5,7 +5,7 @@ import json
 import boto3
 from decimal import Decimal
 from collections import defaultdict
-from tlx.util import get_uuid
+from tlx.util import get_dynamo_compatible_uuid
 
 
 def _pull_values(item):
@@ -141,7 +141,7 @@ def load_json_dump(file_name, table_name, primary_key=False):
 
     if primary_key:
         for i in items:
-            i[primary_key] = get_uuid()
+            i[primary_key] = get_dynamo_compatible_uuid()
 
     batch_write(table, items)
 

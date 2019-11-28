@@ -1,6 +1,6 @@
 # Dynamodb Tools
 
-This module provides python tools to take out some boilerplate when operating with Dynamodb.
+This module provides python tools to reduce boilerplate when operating with DynamoDB.
 
 Some of the python functions have a CLI interface.
 
@@ -11,8 +11,7 @@ As always, use the `--help` flag to get started
 
 ## Function Summary
 
-See doc string for detailed usage.
-
+See docstring for detailed usage.
 
 | function | description |
 |---| --- |

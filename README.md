@@ -11,11 +11,14 @@ pip install tlx
 ```
 
 ## CLI apps
+Tools that should be in the `awscli` but aren't or don't function well.  All have `--help` for details.
 
 All CLI applications have their own detailed help menus.  Currently available tools are:
 
-- `get-aws-creds`
-- `dynamo-batch-write`
+| function | description |
+|---| --- |
+| `get-aws-creds` | returns temporary session credentials. Locally mock AWS runtime environments, debugging IAM etc |
+| `dynamo-batch-write` | loads scan results into a dynamo table.  Much better than `awscli` option |
 
 ```bash
 $ dynamo-batch-write --help
@@ -38,23 +41,16 @@ Options:
   -h, --help                Show this message and exit.
 ```
 
-## Documentation
 
-### CLI tools
-Tools that should be in the `awscli` but aren't or don't function well.  All have `--help` for details.
-
-| function | description |
-|---| --- |
-| `get-aws-creds` | returns temporary session credentials. Locally mock AWS runtime environments, debugging IAM etc |
-| `dynamo-batch-write` | loads scan results into a dynamo table.  Much better than `awscli` option |
-
-### Module Summary
+## Module Summary
 Import these in a python program or shell.
 
 | function | description |
 |---| --- |
+| `tlx.apigateway` | Reduce boilerplate when using proxy response lambdas with API Gateway |
 | `tlx.dynamodb.table` | `clear_table` + other functions for dealing with nested data reliably |
 | `tlx.dynamodb.batch` | batch table operations: `load_from_csv`, `load_json_dump`, `load_scan_dump` + more |
+| `tlx.util` | Extra tools such as: better boto3 `Session`, generic paginator that works on all boto3 calls + more |
 
 
 *See Submodule docs for more examples.*
@@ -63,10 +59,7 @@ Import these in a python program or shell.
 - [Dynamodb Tools](tlx/dynamodb/README.md)
 
 ## Light install
-If this grows too large it may become a namespace package so that parts can be installed easily. But until that time if you need a tool and only that tool, say for a deployment to WAS lambda or GAP App engine, then:
+If this grows too large it may become a namespace package so that individual parts can be installed easily. But until that time if you need a tool and only that tool, say for a deployment to AWS lambda or GCP App Engine, then:
 
-1.  Do a local install without dependencies:
-`pip install --no-deps -t package/location/ tlx`
-2.  Remove all the things you don't need
-3.  Run your project and install the dependencies as above until it works.
-
+1.  Do a local install without dependencies: `pip install --no-deps -t package/location/ tlx`
+2.  Run your project and install the dependencies as you encounter import errors.

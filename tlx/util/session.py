@@ -49,7 +49,7 @@ class Session(boto3.session.Session):
                 'aws_session_token': creds['SessionToken'],
             })
         # 4. If pofile is user profile and has mfa, populate env var params like role
-        profile_mfa_serial = get_mfa_serial_if_user(profile) if profile and not temp_creds_already_exist else None
+        profile_mfa_serial = _get_mfa_serial_if_user(profile) if profile and not temp_creds_already_exist else None
         if profile_mfa_serial:
             if not mfa_token:
                 mfa_token = getpass(f'Enter MFA code for {profile_mfa_serial}: ')
@@ -84,7 +84,7 @@ class Session(boto3.session.Session):
         return creds
 
 
-def get_mfa_serial_if_user(profile):
+def _get_mfa_serial_if_user(profile):
     """Finds users mfa_serial from ~/.aws/credentials"""
 
     profile = profile or 'default'
