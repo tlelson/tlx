@@ -17,15 +17,15 @@ See docstring for detailed usage.
 |---| --- |
 | `batch_delete` | Efficiently deletes all specified items in a provided table name |
 | `batch_write` | Efficiently write items to a provided table name |
-| `get_ddb_table` | Get boot table object by name. Can be used as a check since takes and returns table object too |
+| `get_ddb_table` | Get boto3 table object by name. Can be used as a check since takes and returns table object |
 | `load_from_csv` | Loads csv data file.  See docstring for details |
-| `load_json_dump` | Loads a 'jsonlines' file such as a BigQuery dump |
-| `load_scan_dump` | Loads the results of a scan opperation into a table |
+| `load_json_dump` | Loads a _jsonlines_ file such as a BigQuery dump |
+| `load_scan_dump` | Loads the results of a scan opperation into a table. *This is not possible with boto3!* |
 
 
 ## Examples
 
-### Batch Upload data to Dynamodb
+### Batch Upload data to DynamoDB
 
 There are certain limitations with each of the load functions that are explained in the docstrings or help menus.
 

@@ -11,12 +11,13 @@ See docstring for detailed usage.
 | function | description |
 |---| --- |
 | `string_from_datetime` | Stringify a datetime object |
-| `get_ddb_compatible_uuid` | Get a 32 char hex UUID that doesn't|
-| `paginate` | Easy get all items from a pagable boto3 call |
+| `get_ddb_compatible_uuid` | Get a 32 char hex UUID that works as a DynamoDB table ID |
+| `paginate` | single call to get all items from any pagable boto3 call |
 | `Session` | Extends boto3 `Session`.  Provides extra features such as temp tokens for users requiring mfa |
-| `ensure_http_success` | Decorate function that makes an boto3 API call.  Avoid boilerplate of checking `HTTPStatusCode` every time. |
+| `ensure_http_success` | Decorate function that makes a boto3 API call.  Avoid boilerplate of checking `HTTPStatusCode` every time. |
 
 ## Examples
+
 ### Session
 This can be used to start a session with the AWS REST APIs.
 
@@ -48,3 +49,18 @@ Or, if the role is configured in `.aws/credentials`:
 session = Session(profile='Developer')             # Using [Trades] profile
 ```
 
+### Paginate
+Regardless of what [strange pagination method](https://github.com/iann0036/aws-pagination-rules) your aws method uses.
+
+```
+# Get clients
+session = Session(...)  # Boto3 or TLX Session
+
+logs, apig, cfn = map(session.client, ('logs', 'apigateway', 'cloudformation'))
+
+# Get all Log groups rather than just the first 50
+log_groups = [lg['logGroupName'] for lg in paginate(logs.describe_log_groups)]
+all_resources = [ r for r in paginate(apig.get_resources, restApiId=rest_apis[0]['id']]
+all_stacks = [ s for s in paginate(cfn.list_stacks)]
+
+```
