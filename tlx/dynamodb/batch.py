@@ -3,6 +3,7 @@ import io
 import math
 import json
 import boto3
+import logging
 from decimal import Decimal
 from collections import defaultdict
 from tlx.util import get_dynamo_compatible_uuid
@@ -39,11 +40,15 @@ def batch_write(table, items):
 
     table = get_ddb_table(table)
 
-    with table.batch_writer() as batch:
-        for item in items:
-            batch.put_item(
-                Item=item,
-            )
+    try:
+        with table.batch_writer() as batch:
+            for item in items:
+                batch.put_item(
+                    Item=item,
+                )
+    except TypeError as err:
+        logging.error(err)
+        logging.error(f"Type issue in item={item}")
 
 
 def batch_delete(table, item_keys):
