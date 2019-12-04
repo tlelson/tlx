@@ -154,3 +154,35 @@ def clear_table(table):
     table_keys = [key['AttributeName'] for key in table.key_schema]
     all_ids = ({key: r[key] for key in table_keys} for r in paginate(ddb.scan, TableName=table.name))
     batch_delete(table, all_ids)
+
+
+def full_scan(table, **table_scan_params):
+    """ The table resource paginates its scan results.  Although the client scan with
+        paginate with the generic paginator in tlx, the client scan method won't accept
+        the expected FilterExpression from `boto3.dynamodb.conditions` namely `Key, Attr`
+
+        This method take normal table scan parameters and returns the complete list.
+
+        e.g
+            >>> from boto3.dynamodb.conditions import Key, Attr
+            >>> table_scan_params = dict(
+            ...     # IndexName='User_Latest_Predictions2',
+            ...     # ProjectionExpression='itemId',
+            ...     FilterExpression=Attr('userId').eq(USERID),
+            ... )
+            >>> items = tlx.dynamodb.table.full_scan(table_name, **table_scan_params)
+
+    """
+
+    table = get_ddb_table(table)
+
+    items = []
+    scan_incomplete = True
+    while scan_incomplete:
+        res = table.scan(**table_scan_params)
+        items.extend(res['Items'])
+        try:
+            table_scan_params['ExclusiveStartKey'] = res['LastEvaluatedKey']
+        except KeyError:  # Last item
+            scan_incomplete = False
+    return items

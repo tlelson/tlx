@@ -39,18 +39,17 @@ def batch_write(table, items):
 
     table = get_ddb_table(table)
 
-    try:
-        with table.batch_writer() as batch:
-            for item in items:
-                batch.put_item(
-                    Item=item,
-                )
+    with table.batch_writer() as batch:
+        for item in items:
+            batch.put_item(
+                Item=item,
+            )
 
 
 def batch_delete(table, item_keys):
     """
         item_keys must be a list of dictionary of the keys required by the Table.
-        e.g for a single key table: [{'id': 001, 'id': 002, ...}]
+        e.g for a single key table: [{'id': 001},{'id': 002}, ...}]
         for tables with a sort key, that must be included.
     """
 
