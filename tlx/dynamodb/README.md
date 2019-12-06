@@ -21,6 +21,8 @@ See docstring for detailed usage.
 | `load_from_csv` | Loads csv data file.  See docstring for details |
 | `load_json_dump` | Loads a _jsonlines_ file such as a BigQuery dump |
 | `load_scan_dump` | Loads the results of a scan opperation into a table. *This is not possible with boto3!* |
+| `json_loads` | like `json.loads` but prepares Decimals and Timestamps for Dynamo |
+| `json_dumps` | like `json.dumps` but handles Decimals and converts Timestamps to ISO format |
 
 
 ## Examples

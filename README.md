@@ -48,8 +48,7 @@ Import these in a python program or shell.
 | function | description |
 |---| --- |
 | `tlx.apigateway` | Reduce boilerplate when using proxy response lambdas with API Gateway |
-| `tlx.dynamodb.table` | `clear_table` + other functions for dealing with nested data reliably |
-| `tlx.dynamodb.batch` | batch table operations: `load_from_csv`, `load_json_dump`, `load_scan_dump` + more |
+| `tlx.dynamodb` | `clear_table`, batch loaders for csv bigquery and functions for nested data reliably |
 | `tlx.util` | Extra tools such as: better boto3 `Session`, generic paginator that works on all boto3 calls + more |
 
 

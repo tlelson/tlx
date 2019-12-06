@@ -8,7 +8,7 @@ def string_from_datetime(dt_obj, sep=None, timespec='milliseconds'):
     # Pandas datetime is not yet implimenting `timespec`
     # https://github.com/pandas-dev/pandas/issues/26131
     try:
-        return dt_obj.replace(tzinfo=None).isoformat(sep=sep, timespec=timespec)
+        return dt_obj.isoformat(sep=sep, timespec=timespec)
     except TypeError as e:
         msg = ("\n\nATTN!! If your datetime is actually "
                "`pandas._libs.tslibs.timestamps.Timestamp`"
