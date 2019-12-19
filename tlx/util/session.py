@@ -103,9 +103,10 @@ def _get_mfa_serial_if_user(profile):
             elif line == '\n':
                 if correct_profile:
                     break  # No need to search futher
-        else:
-            msg = f"Profile '{profile}' not found.  Typo?"
-            raise Exception(msg)
+
+    if not correct_profile:
+        msg = f"Profile '{profile}' not found.  Typo?"
+        raise Exception(msg)
 
     if is_user_profile:
         return identified_mfa_serial
