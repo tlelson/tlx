@@ -15,6 +15,8 @@ See docstring for detailed usage.
 
 | function | description |
 |---| --- |
+| `clear_table` | Clear all items in a table |
+| `full_scan` | Clear all items in a table |
 | `batch_delete` | Efficiently deletes all specified items in a provided table name |
 | `batch_write` | Efficiently write items to a provided table name |
 | `get_ddb_table` | Get boto3 table object by name. Can be used as a check since takes and returns table object |

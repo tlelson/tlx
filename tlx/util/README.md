@@ -46,21 +46,21 @@ session = Session(
 ```
 Or, if the role is configured in `.aws/credentials`:
 ```python
-session = Session(profile='Developer')             # Using [Trades] profile
+session = Session(profile='Developer')             # Defined in ~/.aws/credentials
 ```
 
 ### Paginate
 Regardless of what [strange pagination method](https://github.com/iann0036/aws-pagination-rules) your aws method uses.
 
-```
+```python
 # Get clients
 session = Session(...)  # Boto3 or TLX Session
 
 logs, apig, cfn = map(session.client, ('logs', 'apigateway', 'cloudformation'))
 
 # Get all Log groups rather than just the first 50
-log_groups = [lg['logGroupName'] for lg in paginate(logs.describe_log_groups)]
-all_resources = [ r for r in paginate(apig.get_resources, restApiId=rest_apis[0]['id']]
-all_stacks = [ s for s in paginate(cfn.list_stacks)]
+log_groups = [ lg['logGroupName'] for lg in paginate(logs.describe_log_groups) ]
+all_resources = [ r for r in paginate(apig.get_resources, restApiId=your_rest_api_id ]
+all_stacks = [ s for s in paginate(cfn.list_stacks) ]
 
 ```

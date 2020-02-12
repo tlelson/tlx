@@ -157,11 +157,11 @@ def clear_table(table):
 
 
 def full_scan(table, **table_scan_params):
-    """ The table resource paginates its scan results.  Although the client scan with
-        paginate with the generic paginator in tlx, the client scan method won't accept
-        the expected FilterExpression from `boto3.dynamodb.conditions` namely `Key, Attr`
+    """ Paginates fully over the table resource scan method wich is not natively pagable.
+        Although the client scan method is pagable using with the generic paginator in tlx,
+        it won't accept the FilterExpression from `boto3.dynamodb.conditions` (`Key, Attr`)
 
-        This method take normal table scan parameters and returns the complete list.
+        This method takes normal table scan parameters and returns the complete list.
 
         e.g
             >>> from boto3.dynamodb.conditions import Key, Attr
