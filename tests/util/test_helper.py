@@ -5,7 +5,7 @@ from tlx.util import paginate
 
 @vcr.use_cassette
 def test_describe_log_groups():
-    logs = boto3.client('logs')
+    logs = boto3.client('logs', region_name='ap-southeast-2')
 
     page0 = logs.describe_log_groups()['logGroups']
     all_pages = [x for x in paginate(logs.describe_log_groups)]
@@ -18,7 +18,7 @@ def test_describe_log_groups():
 
 @vcr.use_cassette
 def test_list_stacks():
-    cfn = boto3.client('cloudformation')
+    cfn = boto3.client('cloudformation', region_name='ap-southeast-2')
 
     page0 = cfn.list_stacks()['StackSummaries']
     all_pages = [x for x in paginate(cfn.list_stacks)]
@@ -31,7 +31,7 @@ def test_list_stacks():
 
 @vcr.use_cassette
 def test_list_s3_objects():
-    s3 = boto3.client('s3')
+    s3 = boto3.client('s3', region_name='ap-southeast-2')
 
     bucket_name = s3.list_buckets()['Buckets'][0]['Name']
 
