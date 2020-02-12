@@ -60,14 +60,12 @@ def main(profile, quiet):
     if 'AWS_ACCESS_KEY_ID' in os.environ:
         del os.environ['AWS_ACCESS_KEY_ID']
 
-    session = Session(profile=profile)
-    creds = session.get_session_creds()
-    # try:
-        # session = Session(profile=profile)
-        # creds = session.get_session_creds()
-    # except Exception as e:
-        # print("{}: {}".format(type(e).__name__, e))
-        # sys.exit(1)
+    try:
+        session = Session(profile=profile)
+        creds = session.get_session_creds()
+    except Exception as e:
+        print("{}: {}".format(type(e).__name__, e))
+        sys.exit(1)
 
     if not quiet:
         print("Keys and token for profile: '{profile}'".format(profile=profile))
