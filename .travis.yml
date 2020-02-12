@@ -20,7 +20,8 @@ install:
   - pip install -r requirements.txt
   - pip install -r test_requirements.txt
 script:
-  - echo "AWS Keys are: ${AWS_ACCESS_KEY_ID} ... and ${AWS_SECRET_ACCESS_KEY}"
+  - echo ${AWS_ACCESS_KEY_ID}
+  - echo ${AWS_SECRET_ACCESS_KEY}
   - echo -e "Testing TLX"
   - flake8 --ignore=E501
   - pip install .   # Install package
