@@ -1,0 +1,212 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Authorization:
+      - !!binary |
+        QVdTNC1ITUFDLVNIQTI1NiBDcmVkZW50aWFsPUFTSUFZS0pPVVVWSzZQQUpMWDdLLzIwMTkxMjA2
+        L2FwLXNvdXRoZWFzdC0yL3MzL2F3czRfcmVxdWVzdCwgU2lnbmVkSGVhZGVycz1ob3N0O3gtYW16
+        LWNvbnRlbnQtc2hhMjU2O3gtYW16LWRhdGU7eC1hbXotc2VjdXJpdHktdG9rZW4sIFNpZ25hdHVy
+        ZT03NmY1M2ZlMjBkMTgyYTcwYTQ4M2YxYzU4ZTRjMGE1YWZiMWM0ZjRjM2FmZjVhMzgzOGNlNjEz
+        NzQ0ZDg4NzU4
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIzMyBQeXRob24vMy43LjMgTGludXgvNC40LjAtMTgzNjItTWljcm9zb2Z0IEJv
+        dG9jb3JlLzEuMTIuMjUy
+      X-Amz-Content-SHA256:
+      - !!binary |
+        ZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3
+        ODUyYjg1NQ==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTEyMDZUMTA1MzU1Wg==
+      X-Amz-Security-Token:
+      - !!binary |
+        RndvR1pYSXZZWGR6RUR3YURQNGthRWxJZTNIMjlwWFoyU0tHQVVMeWs1MnQycXNrN0ZMclN3RzY5
+        VWZqd0xzblg3elRNZDhjYmltamVzaSthcTFHNlhybUN4U2kvK3hDUndqSnlkUE9vMzYvYkhIakN4
+        WnIvWm03SmRXTnAyc0RPNklRbkViR080S2d1T1U5ZW93VHRpeG1reGhoTzYzTWJDMTRsZHY5NkU4
+        RTd0TEdsMVFjTElDbDI1RXUrUTl6WTM5QnNHejNkWklvNG8vUFY5WlBmQWhHS0xuZHFPOEZNaWpu
+        REJkcUlnbmk3aURDZ3lEcWRnZzVUbkdabXIxd05GQWloY3E5OGVsaytRRlZ1VkdGNjdFdg==
+    method: GET
+    uri: https://s3.ap-southeast-2.amazonaws.com/
+  response:
+    body:
+      string: '<?xml version="1.0" encoding="UTF-8"?>
+
+        <ListAllMyBucketsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><Buckets><Bucket><Name>aws-athena-query-results-571865343317-ap-southeast-2</Name><CreationDate>2019-10-02T04:42:57.000Z</CreationDate></Bucket><Bucket><Name>aws-athena-query-results-571865343317-us-east-1</Name><CreationDate>2019-08-09T02:12:45.000Z</CreationDate></Bucket><Bucket><Name>aws-glue-571865343317-ap-southeast-2</Name><CreationDate>2019-09-03T01:38:58.000Z</CreationDate></Bucket><Bucket><Name>aws-glue-scripts-571865343317-ap-southeast-2</Name><CreationDate>2019-05-20T01:01:36.000Z</CreationDate></Bucket><Bucket><Name>cf-templates-xg7zecggx0lt-ap-southeast-2</Name><CreationDate>2019-01-20T23:49:20.000Z</CreationDate></Bucket><Bucket><Name>cf-templates-xg7zecggx0lt-us-east-1</Name><CreationDate>2019-01-24T03:38:43.000Z</CreationDate></Bucket><Bucket><Name>cf-templates-xg7zecggx0lt-us-west-2</Name><CreationDate>2019-02-18T22:40:28.000Z</CreationDate></Bucket><Bucket><Name>codepipeline-us-west-2-334396661088</Name><CreationDate>2019-02-18T22:36:52.000Z</CreationDate></Bucket><Bucket><Name>codepipeline-us-west-2-505032988275</Name><CreationDate>2019-02-18T22:36:52.000Z</CreationDate></Bucket><Bucket><Name>sagemaker-ap-southeast-2-571865343317</Name><CreationDate>2019-08-19T23:43:22.000Z</CreationDate></Bucket><Bucket><Name>teal-accounting-pipeline-artifactbucket-17di2eeg5nsw</Name><CreationDate>2019-09-10T01:58:34.000Z</CreationDate></Bucket><Bucket><Name>teal-accounting-pipeline-artifactstorebucket-1fu310kx6v6qi</Name><CreationDate>2019-09-10T01:58:34.000Z</CreationDate></Bucket><Bucket><Name>teal-admin-dev-adminbucket-7og5zw3auz6s</Name><CreationDate>2019-09-23T04:19:06.000Z</CreationDate></Bucket><Bucket><Name>teal-admin-pipeline-artifactstorebucket-1vkcoqv009za7</Name><CreationDate>2019-09-23T04:44:20.000Z</CreationDate></Bucket><Bucket><Name>teal-admin-prod-adminbucket-nove4lb32jrs</Name><CreationDate>2019-09-23T02:42:10.000Z</CreationDate></Bucket><Bucket><Name>teal-admin-showcase-adminbucket-adjvw5fophd6</Name><CreationDate>2019-02-13T04:30:13.000Z</CreationDate></Bucket><Bucket><Name>teal-admin-uat-adminbucket-10ez5uhv85cv4</Name><CreationDate>2019-09-19T03:53:05.000Z</CreationDate></Bucket><Bucket><Name>teal-api-docs-dev-docsbucket-1t04ivc4xrycn</Name><CreationDate>2019-07-28T23:58:29.000Z</CreationDate></Bucket><Bucket><Name>teal-api-docs-prod-docsbucket-1nyrbi5zk0ulp</Name><CreationDate>2019-09-19T04:12:53.000Z</CreationDate></Bucket><Bucket><Name>teal-api-docs-showcase-docsbucket-8uftapbr0c8j</Name><CreationDate>2019-09-02T01:47:07.000Z</CreationDate></Bucket><Bucket><Name>teal-api-docs-uat-docsbucket-yyg2i3xy72jf</Name><CreationDate>2019-09-19T04:12:59.000Z</CreationDate></Bucket><Bucket><Name>teal-authoriser-pipeline-artifactbucket-1jb5m8m5c6krl</Name><CreationDate>2019-02-13T04:29:33.000Z</CreationDate></Bucket><Bucket><Name>teal-authoriser-pipeline-artifactstorebucket-am5nyhrd6amg</Name><CreationDate>2019-02-13T04:29:32.000Z</CreationDate></Bucket><Bucket><Name>teal-banking-pipeline-artifactbucket-1kd9cglkrlrrr</Name><CreationDate>2019-10-04T04:48:20.000Z</CreationDate></Bucket><Bucket><Name>teal-banking-pipeline-artifactstorebucket-jc7vvv5plovz</Name><CreationDate>2019-10-04T04:48:20.000Z</CreationDate></Bucket><Bucket><Name>teal-cashflow-pipeline-artifactbucket-g8x23t2d5o59</Name><CreationDate>2019-08-19T04:30:46.000Z</CreationDate></Bucket><Bucket><Name>teal-cashflow-pipeline-artifactstorebucket-wqh8w4ksa71g</Name><CreationDate>2019-08-19T04:30:46.000Z</CreationDate></Bucket><Bucket><Name>teal-chatbot-pipeline-artifactbucket-1713zu47pq71i</Name><CreationDate>2019-06-27T02:01:49.000Z</CreationDate></Bucket><Bucket><Name>teal-chatbot-pipeline-artifactstorebucket-1ndrdifi2h7bp</Name><CreationDate>2019-06-27T02:01:49.000Z</CreationDate></Bucket><Bucket><Name>teal-cleanup-pipeline-artifactstorebucket-1oxfjey883bi1</Name><CreationDate>2019-03-13T04:29:59.000Z</CreationDate></Bucket><Bucket><Name>teal-client-pipeline-artifactbucket-1qtr5ivoehqc8</Name><CreationDate>2019-07-01T05:41:38.000Z</CreationDate></Bucket><Bucket><Name>teal-client-pipeline-artifactstorebucket-1d9o4x4xg3ze7</Name><CreationDate>2019-07-01T05:41:38.000Z</CreationDate></Bucket><Bucket><Name>teal-content-pipeline-artifactbucket-lc5dxcgx9hqt</Name><CreationDate>2019-08-02T03:16:24.000Z</CreationDate></Bucket><Bucket><Name>teal-content-pipeline-artifactstorebucket-mkdt3k421jn1</Name><CreationDate>2019-08-02T03:16:24.000Z</CreationDate></Bucket><Bucket><Name>teal-divipay-pipeline-artifactbucket-1kzlcpffd6kxi</Name><CreationDate>2019-09-06T00:21:11.000Z</CreationDate></Bucket><Bucket><Name>teal-divipay-pipeline-artifactstorebucket-zpqz985f7yn5</Name><CreationDate>2019-09-06T00:21:10.000Z</CreationDate></Bucket><Bucket><Name>teal-expense-pipeline-artifactbucket-5ihyhbsavnir</Name><CreationDate>2019-06-17T23:34:39.000Z</CreationDate></Bucket><Bucket><Name>teal-expense-pipeline-artifactstorebucket-6og7b0xzbw97</Name><CreationDate>2019-06-17T23:34:39.000Z</CreationDate></Bucket><Bucket><Name>teal-invoice-pipeline-artifactbucket-m7a80jocy0i3</Name><CreationDate>2019-02-13T04:29:34.000Z</CreationDate></Bucket><Bucket><Name>teal-invoice-pipeline-artifactstorebucket-1rv468y3tovlq</Name><CreationDate>2019-02-13T04:29:33.000Z</CreationDate></Bucket><Bucket><Name>teal-logging-bucket-loggingbucket-19mnb23rvuov8</Name><CreationDate>2019-09-23T04:19:09.000Z</CreationDate></Bucket><Bucket><Name>teal-meta-pipeline-artifactstorebucket-1h7p80lylgr8v</Name><CreationDate>2019-01-27T12:47:58.000Z</CreationDate></Bucket><Bucket><Name>teal-meta-us-east-1-571865343317</Name><CreationDate>2019-11-11T03:36:17.000Z</CreationDate></Bucket><Bucket><Name>teal-ml-cashflow-models-pipel-artifactstorebucket-uc0tmbuj7451</Name><CreationDate>2019-09-10T00:50:07.000Z</CreationDate></Bucket><Bucket><Name>teal-ml-cashflow-models-pipeline-artifactbucket-a3m2p8t9lycl</Name><CreationDate>2019-09-10T00:50:07.000Z</CreationDate></Bucket><Bucket><Name>teal-ml-lambda-bucket</Name><CreationDate>2019-08-13T03:57:51.000Z</CreationDate></Bucket><Bucket><Name>teal-predictedexpenses-pipeli-artifactstorebucket-z11vwyvk4kb1</Name><CreationDate>2019-10-14T04:08:04.000Z</CreationDate></Bucket><Bucket><Name>teal-predictedexpenses-pipeline-artifactbucket-1tt65heir64cu</Name><CreationDate>2019-10-14T04:08:03.000Z</CreationDate></Bucket><Bucket><Name>teal-predictions-artifact-dep-modelartifactbucket-lxg7244pn147</Name><CreationDate>2019-11-11T02:41:11.000Z</CreationDate></Bucket><Bucket><Name>teal-product-pipeline-artifactbucket-1n6e4dlplx2l4</Name><CreationDate>2019-02-13T04:29:33.000Z</CreationDate></Bucket><Bucket><Name>teal-product-pipeline-artifactstorebucket-1o6v8xdiqc9c3</Name><CreationDate>2019-02-13T04:29:33.000Z</CreationDate></Bucket><Bucket><Name>teal-reporting-bucket-dev-reportingbucket-4rwhrrpf94oj</Name><CreationDate>2019-05-07T03:41:16.000Z</CreationDate></Bucket><Bucket><Name>teal-reporting-bucket-prod-reportingbucket-12srxijvu93ny</Name><CreationDate>2019-09-19T02:21:51.000Z</CreationDate></Bucket><Bucket><Name>teal-reporting-bucket-showcase-reportingbucket-1r2840k0ybe24</Name><CreationDate>2019-05-07T03:41:14.000Z</CreationDate></Bucket><Bucket><Name>teal-reporting-bucket-uat-reportingbucket-16xyudqvskfr5</Name><CreationDate>2019-05-07T03:41:16.000Z</CreationDate></Bucket><Bucket><Name>teal-schemas-pipeline-artifactstorebucket-ww4xam0nijrg</Name><CreationDate>2019-02-20T23:56:13.000Z</CreationDate></Bucket><Bucket><Name>teal-security-s3sharedbucket-v5i3obwkcz4a</Name><CreationDate>2019-09-26T03:44:48.000Z</CreationDate></Bucket><Bucket><Name>teal-showcase-accounting-pipe-artifactstorebucket-17g6he6eyfpfu</Name><CreationDate>2019-09-23T06:32:20.000Z</CreationDate></Bucket><Bucket><Name>teal-showcase-admin-pipeline-artifactstorebucket-oft4n9kdlclm</Name><CreationDate>2019-11-05T21:55:36.000Z</CreationDate></Bucket><Bucket><Name>teal-showcase-authoriser-pipe-artifactstorebucket-xyd45nby5a0l</Name><CreationDate>2019-09-23T06:27:01.000Z</CreationDate></Bucket><Bucket><Name>teal-showcase-banking-pipelin-artifactstorebucket-cfowjdlckmin</Name><CreationDate>2019-10-04T07:11:30.000Z</CreationDate></Bucket><Bucket><Name>teal-showcase-cashflow-pipeli-artifactstorebucket-z153yjxmcehc</Name><CreationDate>2019-09-23T06:26:26.000Z</CreationDate></Bucket><Bucket><Name>teal-showcase-chatbot-pipelin-artifactstorebucket-b6w9lf6vlmqo</Name><CreationDate>2019-09-23T06:39:14.000Z</CreationDate></Bucket><Bucket><Name>teal-showcase-client-pipeline-artifactstorebucket-1sy011tjkb116</Name><CreationDate>2019-09-23T06:32:21.000Z</CreationDate></Bucket><Bucket><Name>teal-showcase-content-pipelin-artifactstorebucket-d3l7trjlq0il</Name><CreationDate>2019-09-23T06:32:46.000Z</CreationDate></Bucket><Bucket><Name>teal-showcase-divipay-pipelin-artifactstorebucket-1bh918b3xdrl8</Name><CreationDate>2019-09-23T06:32:26.000Z</CreationDate></Bucket><Bucket><Name>teal-showcase-expense-pipelin-artifactstorebucket-p1wshxjrh54l</Name><CreationDate>2019-09-23T06:32:27.000Z</CreationDate></Bucket><Bucket><Name>teal-showcase-invoice-pipelin-artifactstorebucket-4co9gmy99igz</Name><CreationDate>2019-09-23T06:32:26.000Z</CreationDate></Bucket><Bucket><Name>teal-showcase-ml-cashflow-mod-artifactstorebucket-1ihn8bc4tu9h3</Name><CreationDate>2019-09-23T06:26:22.000Z</CreationDate></Bucket><Bucket><Name>teal-showcase-predictedexpens-artifactstorebucket-1ivt45a8t5izq</Name><CreationDate>2019-10-14T05:52:47.000Z</CreationDate></Bucket><Bucket><Name>teal-showcase-product-pipelin-artifactstorebucket-av7tei01599x</Name><CreationDate>2019-09-23T06:32:20.000Z</CreationDate></Bucket><Bucket><Name>teal-showcase-schemas-pipelin-artifactstorebucket-tmgdlrbr24dk</Name><CreationDate>2019-09-23T06:14:37.000Z</CreationDate></Bucket><Bucket><Name>teal-showcase-transaction-pip-artifactstorebucket-16yogl9uswqez</Name><CreationDate>2019-09-23T06:32:24.000Z</CreationDate></Bucket><Bucket><Name>teal-showcase-user-pipeline-artifactstorebucket-1a4qomthvlfio</Name><CreationDate>2019-09-23T06:32:20.000Z</CreationDate></Bucket><Bucket><Name>teal-showcase-web-edith-pipel-artifactstorebucket-e2yiss6diiyj</Name><CreationDate>2019-09-23T06:34:08.000Z</CreationDate></Bucket><Bucket><Name>teal-showcase-worker-pipeline-artifactstorebucket-1ejuxx4y51dzs</Name><CreationDate>2019-09-23T06:26:30.000Z</CreationDate></Bucket><Bucket><Name>teal-signup-bucket-signupwhitelistbucket-2hx4fu2z7qk5</Name><CreationDate>2019-10-08T00:20:59.000Z</CreationDate></Bucket><Bucket><Name>teal-static</Name><CreationDate>2019-01-29T22:35:22.000Z</CreationDate></Bucket><Bucket><Name>teal-transaction-pipeline-artifactbucket-1gf35j2no43w0</Name><CreationDate>2019-05-08T00:16:54.000Z</CreationDate></Bucket><Bucket><Name>teal-transaction-pipeline-artifactstorebucket-jik1u0rk3lnd</Name><CreationDate>2019-05-08T00:16:54.000Z</CreationDate></Bucket><Bucket><Name>teal-user-pipeline-artifactbucket-ytchgm58h77k</Name><CreationDate>2019-02-13T04:29:31.000Z</CreationDate></Bucket><Bucket><Name>teal-user-pipeline-artifactstorebucket-1h76r6qk2uuh</Name><CreationDate>2019-02-13T04:29:31.000Z</CreationDate></Bucket><Bucket><Name>teal-web-edith-dev-websitebucket-1dzvniacy5y01</Name><CreationDate>2019-06-07T01:38:39.000Z</CreationDate></Bucket><Bucket><Name>teal-web-edith-pipeline-artifactstorebucket-1jxbq2awsi1dt</Name><CreationDate>2019-06-07T04:00:59.000Z</CreationDate></Bucket><Bucket><Name>teal-web-edith-prod-websitebucket-1it8zdog3tzgj</Name><CreationDate>2019-09-19T04:13:08.000Z</CreationDate></Bucket><Bucket><Name>teal-web-edith-showcase-websitebucket-3ulrtreuf1ey</Name><CreationDate>2019-09-02T05:20:24.000Z</CreationDate></Bucket><Bucket><Name>teal-web-edith-uat-websitebucket-14kuepeqmyk5</Name><CreationDate>2019-09-19T04:13:00.000Z</CreationDate></Bucket><Bucket><Name>teal-worker-pipeline-artifactbucket-isxebqwx586b</Name><CreationDate>2019-02-04T05:37:49.000Z</CreationDate></Bucket><Bucket><Name>teal-worker-pipeline-artifactstorebucket-e3lp8a9wg4za</Name><CreationDate>2019-02-04T05:37:49.000Z</CreationDate></Bucket><Bucket><Name>teal-worker-showcase-reportsbucket-on3sgvi5fhgi</Name><CreationDate>2019-05-06T05:53:14.000Z</CreationDate></Bucket><Bucket><Name>teal-worker-uat-reportsbucket-18ul0yfkbazmv</Name><CreationDate>2019-05-06T05:49:56.000Z</CreationDate></Bucket></Buckets></ListAllMyBucketsResult>'
+    headers:
+      Content-Type:
+      - application/xml
+      Date:
+      - Fri, 06 Dec 2019 10:53:55 GMT
+      Server:
+      - AmazonS3
+      Transfer-Encoding:
+      - chunked
+      x-amz-id-2:
+      - qk220AvddWLOSFrtHyGN4ECjoj1o8jffp87zwJ2crTp2pzULMAg9LA9SuFfph1tIEEFMEdr3hb8=
+      x-amz-request-id:
+      - 43FB50848371647B
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Authorization:
+      - !!binary |
+        QVdTNC1ITUFDLVNIQTI1NiBDcmVkZW50aWFsPUFTSUFZS0pPVVVWSzZQQUpMWDdLLzIwMTkxMjA2
+        L2FwLXNvdXRoZWFzdC0yL3MzL2F3czRfcmVxdWVzdCwgU2lnbmVkSGVhZGVycz1ob3N0O3gtYW16
+        LWNvbnRlbnQtc2hhMjU2O3gtYW16LWRhdGU7eC1hbXotc2VjdXJpdHktdG9rZW4sIFNpZ25hdHVy
+        ZT1jZjMzMGY4OTZiZDc4YzA5ZmZhOWJmZTBlNTJjMjcxNmNkOTRjY2ZkZWY5M2FhNDQ2NGM3ZWJj
+        ZjFmMTM2YjY4
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIzMyBQeXRob24vMy43LjMgTGludXgvNC40LjAtMTgzNjItTWljcm9zb2Z0IEJv
+        dG9jb3JlLzEuMTIuMjUy
+      X-Amz-Content-SHA256:
+      - !!binary |
+        ZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3
+        ODUyYjg1NQ==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTEyMDZUMTA1NDExWg==
+      X-Amz-Security-Token:
+      - !!binary |
+        RndvR1pYSXZZWGR6RUR3YURQNGthRWxJZTNIMjlwWFoyU0tHQVVMeWs1MnQycXNrN0ZMclN3RzY5
+        VWZqd0xzblg3elRNZDhjYmltamVzaSthcTFHNlhybUN4U2kvK3hDUndqSnlkUE9vMzYvYkhIakN4
+        WnIvWm03SmRXTnAyc0RPNklRbkViR080S2d1T1U5ZW93VHRpeG1reGhoTzYzTWJDMTRsZHY5NkU4
+        RTd0TEdsMVFjTElDbDI1RXUrUTl6WTM5QnNHejNkWklvNG8vUFY5WlBmQWhHS0xuZHFPOEZNaWpu
+        REJkcUlnbmk3aURDZ3lEcWRnZzVUbkdabXIxd05GQWloY3E5OGVsaytRRlZ1VkdGNjdFdg==
+    method: GET
+    uri: https://aws-athena-query-results-571865343317-ap-southeast-2.s3.ap-southeast-2.amazonaws.com/?max-keys=10&encoding-type=url
+  response:
+    body:
+      string: '<?xml version="1.0" encoding="UTF-8"?>
+
+        <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Name>aws-athena-query-results-571865343317-ap-southeast-2</Name><Prefix></Prefix><Marker></Marker><MaxKeys>10</MaxKeys><EncodingType>url</EncodingType><IsTruncated>true</IsTruncated><Contents><Key>Unsaved/2019/10/02/29c1c165-581d-4feb-9b48-6b9693db5f8f.txt</Key><LastModified>2019-10-02T04:49:14.000Z</LastModified><ETag>&quot;d41d8cd98f00b204e9800998ecf8427e&quot;</ETag><Size>0</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/02/7aea2fbe-5174-4107-a556-abb6b900c32f.txt</Key><LastModified>2019-10-02T04:42:58.000Z</LastModified><ETag>&quot;d41d8cd98f00b204e9800998ecf8427e&quot;</ETag><Size>0</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/02/b6a5d4e9-afae-4162-ae2c-b39e8144ea5e.csv</Key><LastModified>2019-10-02T04:43:54.000Z</LastModified><ETag>&quot;8b20c7f5002fdd5fa2cf9a1db5cb5047&quot;</ETag><Size>2282010</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/02/b6a5d4e9-afae-4162-ae2c-b39e8144ea5e.csv.metadata</Key><LastModified>2019-10-02T04:43:54.000Z</LastModified><ETag>&quot;204f177883ac3ac79f96ac165907d9ac&quot;</ETag><Size>197</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/24/091368bf-bdd1-44ef-aaae-f057c08ac071.txt</Key><LastModified>2019-10-24T06:03:25.000Z</LastModified><ETag>&quot;d41d8cd98f00b204e9800998ecf8427e&quot;</ETag><Size>0</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/24/645f721f-a740-42b2-9cd3-4b4e1566b25c.txt</Key><LastModified>2019-10-24T05:55:20.000Z</LastModified><ETag>&quot;d41d8cd98f00b204e9800998ecf8427e&quot;</ETag><Size>0</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/24/a6f7c8a2-0ce9-4ab0-953a-982d480edc3f.csv</Key><LastModified>2019-10-24T06:00:12.000Z</LastModified><ETag>&quot;ab49160f9583335acbd9aba645e74605&quot;</ETag><Size>2282010</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/24/a6f7c8a2-0ce9-4ab0-953a-982d480edc3f.csv.metadata</Key><LastModified>2019-10-24T06:00:12.000Z</LastModified><ETag>&quot;34d27f1ebe9af7c187a047f566229ad8&quot;</ETag><Size>197</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/24/c2c1e598-bd39-4cf3-aad2-6f66b49d3bb7.txt</Key><LastModified>2019-10-24T05:58:03.000Z</LastModified><ETag>&quot;d41d8cd98f00b204e9800998ecf8427e&quot;</ETag><Size>0</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/24/cf71496b-a4e8-4dd2-91dc-1d9d56510743.txt</Key><LastModified>2019-10-24T05:51:31.000Z</LastModified><ETag>&quot;d41d8cd98f00b204e9800998ecf8427e&quot;</ETag><Size>0</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents></ListBucketResult>'
+    headers:
+      Content-Type:
+      - application/xml
+      Date:
+      - Fri, 06 Dec 2019 10:54:11 GMT
+      Server:
+      - AmazonS3
+      Transfer-Encoding:
+      - chunked
+      x-amz-bucket-region:
+      - ap-southeast-2
+      x-amz-id-2:
+      - tI/SAjyXmAzesQAWhU4cZpHxSRIqmM/oGQ4aRsFmcyswaWEc8pjyIX1ucOZmZ0fKbvFp5bZ2u2E=
+      x-amz-request-id:
+      - 70C11187AA485EF3
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Authorization:
+      - !!binary |
+        QVdTNC1ITUFDLVNIQTI1NiBDcmVkZW50aWFsPUFTSUFZS0pPVVVWSzZQQUpMWDdLLzIwMTkxMjA2
+        L2FwLXNvdXRoZWFzdC0yL3MzL2F3czRfcmVxdWVzdCwgU2lnbmVkSGVhZGVycz1ob3N0O3gtYW16
+        LWNvbnRlbnQtc2hhMjU2O3gtYW16LWRhdGU7eC1hbXotc2VjdXJpdHktdG9rZW4sIFNpZ25hdHVy
+        ZT03M2RmYTFiYjgyNjAxNGZjNjYzYjNhYTU5ZGFkYTVkMDlhMWNhMGEzNjFmY2Y5ZTc2MmI5YTNl
+        NDM2Mzk4MDkw
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIzMyBQeXRob24vMy43LjMgTGludXgvNC40LjAtMTgzNjItTWljcm9zb2Z0IEJv
+        dG9jb3JlLzEuMTIuMjUy
+      X-Amz-Content-SHA256:
+      - !!binary |
+        ZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3
+        ODUyYjg1NQ==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTEyMDZUMTA1NTMxWg==
+      X-Amz-Security-Token:
+      - !!binary |
+        RndvR1pYSXZZWGR6RUR3YURQNGthRWxJZTNIMjlwWFoyU0tHQVVMeWs1MnQycXNrN0ZMclN3RzY5
+        VWZqd0xzblg3elRNZDhjYmltamVzaSthcTFHNlhybUN4U2kvK3hDUndqSnlkUE9vMzYvYkhIakN4
+        WnIvWm03SmRXTnAyc0RPNklRbkViR080S2d1T1U5ZW93VHRpeG1reGhoTzYzTWJDMTRsZHY5NkU4
+        RTd0TEdsMVFjTElDbDI1RXUrUTl6WTM5QnNHejNkWklvNG8vUFY5WlBmQWhHS0xuZHFPOEZNaWpu
+        REJkcUlnbmk3aURDZ3lEcWRnZzVUbkdabXIxd05GQWloY3E5OGVsaytRRlZ1VkdGNjdFdg==
+    method: GET
+    uri: https://aws-athena-query-results-571865343317-ap-southeast-2.s3.ap-southeast-2.amazonaws.com/?max-keys=10&encoding-type=url
+  response:
+    body:
+      string: '<?xml version="1.0" encoding="UTF-8"?>
+
+        <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Name>aws-athena-query-results-571865343317-ap-southeast-2</Name><Prefix></Prefix><Marker></Marker><MaxKeys>10</MaxKeys><EncodingType>url</EncodingType><IsTruncated>true</IsTruncated><Contents><Key>Unsaved/2019/10/02/29c1c165-581d-4feb-9b48-6b9693db5f8f.txt</Key><LastModified>2019-10-02T04:49:14.000Z</LastModified><ETag>&quot;d41d8cd98f00b204e9800998ecf8427e&quot;</ETag><Size>0</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/02/7aea2fbe-5174-4107-a556-abb6b900c32f.txt</Key><LastModified>2019-10-02T04:42:58.000Z</LastModified><ETag>&quot;d41d8cd98f00b204e9800998ecf8427e&quot;</ETag><Size>0</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/02/b6a5d4e9-afae-4162-ae2c-b39e8144ea5e.csv</Key><LastModified>2019-10-02T04:43:54.000Z</LastModified><ETag>&quot;8b20c7f5002fdd5fa2cf9a1db5cb5047&quot;</ETag><Size>2282010</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/02/b6a5d4e9-afae-4162-ae2c-b39e8144ea5e.csv.metadata</Key><LastModified>2019-10-02T04:43:54.000Z</LastModified><ETag>&quot;204f177883ac3ac79f96ac165907d9ac&quot;</ETag><Size>197</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/24/091368bf-bdd1-44ef-aaae-f057c08ac071.txt</Key><LastModified>2019-10-24T06:03:25.000Z</LastModified><ETag>&quot;d41d8cd98f00b204e9800998ecf8427e&quot;</ETag><Size>0</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/24/645f721f-a740-42b2-9cd3-4b4e1566b25c.txt</Key><LastModified>2019-10-24T05:55:20.000Z</LastModified><ETag>&quot;d41d8cd98f00b204e9800998ecf8427e&quot;</ETag><Size>0</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/24/a6f7c8a2-0ce9-4ab0-953a-982d480edc3f.csv</Key><LastModified>2019-10-24T06:00:12.000Z</LastModified><ETag>&quot;ab49160f9583335acbd9aba645e74605&quot;</ETag><Size>2282010</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/24/a6f7c8a2-0ce9-4ab0-953a-982d480edc3f.csv.metadata</Key><LastModified>2019-10-24T06:00:12.000Z</LastModified><ETag>&quot;34d27f1ebe9af7c187a047f566229ad8&quot;</ETag><Size>197</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/24/c2c1e598-bd39-4cf3-aad2-6f66b49d3bb7.txt</Key><LastModified>2019-10-24T05:58:03.000Z</LastModified><ETag>&quot;d41d8cd98f00b204e9800998ecf8427e&quot;</ETag><Size>0</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/24/cf71496b-a4e8-4dd2-91dc-1d9d56510743.txt</Key><LastModified>2019-10-24T05:51:31.000Z</LastModified><ETag>&quot;d41d8cd98f00b204e9800998ecf8427e&quot;</ETag><Size>0</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents></ListBucketResult>'
+    headers:
+      Content-Type:
+      - application/xml
+      Date:
+      - Fri, 06 Dec 2019 10:55:32 GMT
+      Server:
+      - AmazonS3
+      Transfer-Encoding:
+      - chunked
+      x-amz-bucket-region:
+      - ap-southeast-2
+      x-amz-id-2:
+      - g/gJ9r+5PKM13hLhZHCZvz1VQgoTQKCKQS1dYq37B4D9rzBmbzTHLNLh5kki8nFyE49ba8S/ows=
+      x-amz-request-id:
+      - F5EB11F12AFE233C
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Authorization:
+      - !!binary |
+        QVdTNC1ITUFDLVNIQTI1NiBDcmVkZW50aWFsPUFTSUFZS0pPVVVWSzZQQUpMWDdLLzIwMTkxMjA2
+        L2FwLXNvdXRoZWFzdC0yL3MzL2F3czRfcmVxdWVzdCwgU2lnbmVkSGVhZGVycz1ob3N0O3gtYW16
+        LWNvbnRlbnQtc2hhMjU2O3gtYW16LWRhdGU7eC1hbXotc2VjdXJpdHktdG9rZW4sIFNpZ25hdHVy
+        ZT00M2RmYzkzNWMyY2IyNzlmNmFmZjQ1ZGEzZTY4ZDk1MTM3ZGFlYmZhNGQxMTI4MTFkMDAzNTA4
+        NmRiNGNlMDBm
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIzMyBQeXRob24vMy43LjMgTGludXgvNC40LjAtMTgzNjItTWljcm9zb2Z0IEJv
+        dG9jb3JlLzEuMTIuMjUy
+      X-Amz-Content-SHA256:
+      - !!binary |
+        ZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3
+        ODUyYjg1NQ==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTEyMDZUMTA1NTMyWg==
+      X-Amz-Security-Token:
+      - !!binary |
+        RndvR1pYSXZZWGR6RUR3YURQNGthRWxJZTNIMjlwWFoyU0tHQVVMeWs1MnQycXNrN0ZMclN3RzY5
+        VWZqd0xzblg3elRNZDhjYmltamVzaSthcTFHNlhybUN4U2kvK3hDUndqSnlkUE9vMzYvYkhIakN4
+        WnIvWm03SmRXTnAyc0RPNklRbkViR080S2d1T1U5ZW93VHRpeG1reGhoTzYzTWJDMTRsZHY5NkU4
+        RTd0TEdsMVFjTElDbDI1RXUrUTl6WTM5QnNHejNkWklvNG8vUFY5WlBmQWhHS0xuZHFPOEZNaWpu
+        REJkcUlnbmk3aURDZ3lEcWRnZzVUbkdabXIxd05GQWloY3E5OGVsaytRRlZ1VkdGNjdFdg==
+    method: GET
+    uri: https://aws-athena-query-results-571865343317-ap-southeast-2.s3.ap-southeast-2.amazonaws.com/?max-keys=10&marker=Unsaved%2F2019%2F10%2F24%2Fcf71496b-a4e8-4dd2-91dc-1d9d56510743.txt&encoding-type=url
+  response:
+    body:
+      string: '<?xml version="1.0" encoding="UTF-8"?>
+
+        <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Name>aws-athena-query-results-571865343317-ap-southeast-2</Name><Prefix></Prefix><Marker>Unsaved/2019/10/24/cf71496b-a4e8-4dd2-91dc-1d9d56510743.txt</Marker><MaxKeys>10</MaxKeys><EncodingType>url</EncodingType><IsTruncated>false</IsTruncated><Contents><Key>Unsaved/2019/10/24/db76d510-ec6b-4eee-ace1-d0841bf0a1cd.txt</Key><LastModified>2019-10-24T05:56:37.000Z</LastModified><ETag>&quot;d41d8cd98f00b204e9800998ecf8427e&quot;</ETag><Size>0</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/24/e4024dd8-7ce7-4bcc-b80c-92a25bd6c112.csv</Key><LastModified>2019-10-24T05:58:56.000Z</LastModified><ETag>&quot;7cb944f395e57beef0cbc8c4ee91639b&quot;</ETag><Size>2282010</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/24/e4024dd8-7ce7-4bcc-b80c-92a25bd6c112.csv.metadata</Key><LastModified>2019-10-24T05:58:56.000Z</LastModified><ETag>&quot;895ee3beb9279b0181742b6a8cda1aac&quot;</ETag><Size>197</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/24/f32102ad-a244-4a49-8a75-cb795c7916f8.csv</Key><LastModified>2019-10-24T05:56:04.000Z</LastModified><ETag>&quot;596e69d903b638905c89d59d3978a9d4&quot;</ETag><Size>46</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>Unsaved/2019/10/24/f32102ad-a244-4a49-8a75-cb795c7916f8.csv.metadata</Key><LastModified>2019-10-24T05:56:04.000Z</LastModified><ETag>&quot;91c8b9eb79e5ed81259bcc9790b37fbb&quot;</ETag><Size>197</Size><Owner><ID>a97f153d9265c06e427103cfeb2fe5d7ad2e141059b99b742b7373d48754da88</ID><DisplayName>teal</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents></ListBucketResult>'
+    headers:
+      Content-Type:
+      - application/xml
+      Date:
+      - Fri, 06 Dec 2019 10:55:32 GMT
+      Server:
+      - AmazonS3
+      Transfer-Encoding:
+      - chunked
+      x-amz-bucket-region:
+      - ap-southeast-2
+      x-amz-id-2:
+      - h3Z1rQOJsnGhIq+jqowfB32mbCYARARUXNs4HWS5CKNY74GjGNeB4dEt+mzQhoPyZdXZ4urpPQg=
+      x-amz-request-id:
+      - 62035F758073557A
+    status:
+      code: 200
+      message: OK
+version: 1

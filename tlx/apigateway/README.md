@@ -1,6 +1,16 @@
 # APIGateway Modules
 
-This module provides functions to make python for AWS lambda more idomatic.
+This module provides functions to make python for AWS lambda more idiomatic.
+
+## Function Summary
+
+See docstring for detailed usage.
+
+| function | description |
+|---| --- |
+| `proxy_response_handler` | Use API Gateway 'Proxy Response' but raise exceptions as you should |
+| `require_valid_inputs` | Compare supplied params against required ones and return 400 if necessary |
+| `APIGException` | An exception class to raise when using `proxy_response_handler` |
 
 ## Examples
 

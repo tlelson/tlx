@@ -49,11 +49,13 @@ class Session(boto3.session.Session):
                 'aws_session_token': creds['SessionToken'],
             })
         # 4. If pofile is user profile and has mfa, populate env var params like role
-        profile_mfa_serial = get_mfa_serial_if_user(profile) if profile and not temp_creds_already_exist else None
+        profile_mfa_serial = _get_mfa_serial_if_user(profile) if profile and not temp_creds_already_exist else None
         if profile_mfa_serial:
             if not mfa_token:
                 mfa_token = getpass(f'Enter MFA code for {profile_mfa_serial}: ')
-            creds = boto3.client('sts').get_session_token(
+
+            user_base_session = boto3.session.Session(profile_name=profile)
+            creds = user_base_session.client('sts').get_session_token(
                 SerialNumber=profile_mfa_serial,
                 TokenCode=mfa_token,
             )['Credentials']
@@ -82,7 +84,7 @@ class Session(boto3.session.Session):
         return creds
 
 
-def get_mfa_serial_if_user(profile):
+def _get_mfa_serial_if_user(profile):
     """Finds users mfa_serial from ~/.aws/credentials"""
 
     profile = profile or 'default'
@@ -101,9 +103,10 @@ def get_mfa_serial_if_user(profile):
             elif line == '\n':
                 if correct_profile:
                     break  # No need to search futher
-        else:
-            msg = f"Profile '{profile}' not found.  Typo?"
-            raise Exception(msg)
+
+    if not correct_profile:
+        msg = f"Profile '{profile}' not found.  Typo?"
+        raise Exception(msg)
 
     if is_user_profile:
         return identified_mfa_serial
