@@ -4,5 +4,6 @@ from .logger import Logger, get_log
 from .verification import ensure_http_success
 from .helper import *
 from .common import *
+from .singleton import Singleton
 
 name = 'util'

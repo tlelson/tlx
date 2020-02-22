@@ -4,6 +4,8 @@ env:
   global:
     - PYPI_TEST=https://test.pypi.org/legacy/
     - PYPI_PROD=https://upload.pypi.org/legacy/
+    - AWS_ACCESS_KEY_ID=ASIAXXX    # Need dummy values for VCR tests to work
+    - AWS_SECRET_ACCESS_KEY=xxxxxx
 cache:
   - pip
 branches:
@@ -18,6 +20,8 @@ install:
   - pip install -r requirements.txt
   - pip install -r test_requirements.txt
 script:
+  - echo ${AWS_ACCESS_KEY_ID}
+  - echo ${AWS_SECRET_ACCESS_KEY}
   - echo -e "Testing TLX"
   - flake8 --ignore=E501
   - pip install .   # Install package

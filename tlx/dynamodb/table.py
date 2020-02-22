@@ -1,5 +1,6 @@
 import sys
 import logging
+from tlx.util import paginate
 from tlx.dynamodb.batch import batch_delete, get_ddb_table
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -137,14 +138,51 @@ def add_new_map_field(table, key, path, field_to_add, expression_attribute_names
 
 
 def clear_table(table):
-    """NOT TESTED with Primary and Sort Key Tables !!!
+    """ in Alpha
+
+        - WILL IMMEDIATELY DELETE ALL ITEMS WITHOUT CONFIRMATION !
+
+        NOT TESTED with Primary and Sort Key Tables !!!
         TODO:
             - test on multikey tables
             - make cli app for it
     """
 
     table = get_ddb_table(table)
+    ddb = table.meta.client
 
     table_keys = [key['AttributeName'] for key in table.key_schema]
-    all_ids = ({key: r[key] for key in table_keys} for r in table.scan()['Items'])
+    all_ids = ({key: r[key] for key in table_keys} for r in paginate(ddb.scan, TableName=table.name))
     batch_delete(table, all_ids)
+
+
+def full_scan(table, **table_scan_params):
+    """ Paginates fully over the table resource scan method wich is not natively pagable.
+        Although the client scan method is pagable using with the generic paginator in tlx,
+        it won't accept the FilterExpression from `boto3.dynamodb.conditions` (`Key, Attr`)
+
+        This method takes normal table scan parameters and returns the complete list.
+
+        e.g
+            >>> from boto3.dynamodb.conditions import Key, Attr
+            >>> table_scan_params = dict(
+            ...     # IndexName='User_Latest_Predictions2',
+            ...     # ProjectionExpression='itemId',
+            ...     FilterExpression=Attr('userId').eq(USERID),
+            ... )
+            >>> items = tlx.dynamodb.table.full_scan(table_name, **table_scan_params)
+
+    """
+
+    table = get_ddb_table(table)
+
+    items = []
+    scan_incomplete = True
+    while scan_incomplete:
+        res = table.scan(**table_scan_params)
+        items.extend(res['Items'])
+        try:
+            table_scan_params['ExclusiveStartKey'] = res['LastEvaluatedKey']
+        except KeyError:  # Last item
+            scan_incomplete = False
+    return items
