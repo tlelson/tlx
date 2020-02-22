@@ -68,7 +68,7 @@ def main(profile, quiet):
     """
 
     # Issue #15 - We may be trying to assume another role from a
-    # shell that has previously had its temporyary variables populated
+    # shell that has previously had its temporary variables populated
     if 'AWS_SECRET_ACCESS_KEY' in os.environ:
         del os.environ['AWS_SECRET_ACCESS_KEY']
     if 'AWS_ACCESS_KEY_ID' in os.environ:
@@ -87,4 +87,8 @@ def main(profile, quiet):
 
     print("export AWS_ACCESS_KEY_ID={}".format(creds.access_key))
     print("export AWS_SECRET_ACCESS_KEY={}".format(creds.secret_key))
-    print("export AWS_SESSION_TOKEN={}".format(creds.token))  # We always return temp creds now
+    # non-temporary keys are returned by the boto3.Session if the
+    # user is not required to use MFA token.  Printing out a null
+    # field for this will cause malformed errors when using.
+    if creds.token:
+        print("export AWS_SESSION_TOKEN={}".format(creds.token))
