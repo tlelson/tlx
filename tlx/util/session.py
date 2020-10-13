@@ -94,6 +94,7 @@ def _get_mfa_serial_if_user(profile):
 
     with open(os.path.expanduser('~/.aws/credentials'), 'r') as f:
         for line in f:
+            line = line.strip()
             if line.startswith(f"[{profile}]"):
                 correct_profile = True
             elif correct_profile and line.startswith('mfa_serial'):
