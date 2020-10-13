@@ -92,6 +92,7 @@ def get_mfa_serial_if_user(profile):
 
     with open(os.path.expanduser('~/.aws/credentials'), 'r') as f:
         for line in f:
+            line = line.strip()
             if line.startswith(f"[{profile}]"):
                 correct_profile = True
             elif correct_profile and line.startswith('mfa_serial'):
@@ -101,9 +102,10 @@ def get_mfa_serial_if_user(profile):
             elif line == '\n':
                 if correct_profile:
                     break  # No need to search futher
-        else:
-            msg = f"Profile '{profile}' not found.  Typo?"
-            raise Exception(msg)
+
+    if not correct_profile:
+        msg = f"Profile '{profile}' not found.  Typo?"
+        raise Exception(msg)
 
     if is_user_profile:
         return identified_mfa_serial
