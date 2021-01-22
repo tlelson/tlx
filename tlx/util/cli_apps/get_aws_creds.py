@@ -87,6 +87,7 @@ def main(profile, quiet):
 
     print("export AWS_ACCESS_KEY_ID={}".format(creds.access_key))
     print("export AWS_SECRET_ACCESS_KEY={}".format(creds.secret_key))
+    print("export AWS_REGION={}".format(session.region_name))
     # non-temporary keys are returned by the boto3.Session if the
     # user is not required to use MFA token.  Printing out a null
     # field for this will cause malformed errors when using.

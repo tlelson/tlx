@@ -28,7 +28,7 @@ def add_key(table, key, item):
         ConditionExpression=f"attribute_not_exists({key_names[0]})",  # TODO fix for items with Partition and Sort key
     )
 
-    logger.info(f"Successfully added new record.")
+    logger.info("Successfully added new record.")
     logger.debug(f"{full_item}")
     return res['ResponseMetadata']['HTTPStatusCode']
 
