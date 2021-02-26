@@ -46,8 +46,6 @@ class TestProxyResponseHandler(TestCase):
     apig_event = {"resource": "yoyo", "queryStringParameters": None, "body": None}
 
     def test_malformed_event(self):
-        msg = "An event without the schema of an API Gateway event should be accepted because AppSync may be used."
-
         @proxy_response_handler
         def dummy_handler(event, context):
             print("received: {(event, context)}".format(**locals()))
