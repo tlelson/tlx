@@ -41,32 +41,26 @@ def proxy_response_handler(func=None, running_local=False, quiet=True):
         # Setup default response
         response = {
             "statusCode": 500,
-            "body": {
-                "message": "Error",
-                "response": {},
-            },
+            "body": {},
         }
 
         def setup_error_response(msg, code=None):
             logger.error(msg)
-            response["body"]["message"] = msg
+            response["body"] = msg
             if code:
                 response["statusCode"] = code
 
-        # If the event is not from the apigateway a KeyError may be raised
-        # and intentionally not caught
         event, context = axgs[0], axgs[1]
         logger.info("event: {}".format(json_dumps(event)))
 
         try:  # to get successfull execution
-            response["body"]["response"] = func(event, context)
-            response["body"]["message"] = "Success"
+            response["body"] = func(event, context)
             response["statusCode"] = 200
 
         # if not, format appropriately for proxy integration
         except APIGException as e:
             setup_error_response("Error: {e}".format(e=e), e.code)
-        except Exception as e:  # Unforseen Exception arose
+        except Exception as e:  # Unforseen Exception arose  # pylint: disable=broad-except
             if quiet:
                 pass  # Returns generic error response for production deployment
             elif running_local:
@@ -76,8 +70,6 @@ def proxy_response_handler(func=None, running_local=False, quiet=True):
                 setup_error_response("Error: {e}".format(e=e))  # For remote testing
 
         # Final preparation for http reponse
-        if response["body"]["response"] is None:
-            del response["body"]["response"]
         response["body"] = json_dumps(response["body"])
         logger.info("Returning repsonse: {response}".format(**locals()))
         return response
