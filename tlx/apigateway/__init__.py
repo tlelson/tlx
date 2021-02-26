@@ -52,9 +52,6 @@ def proxy_response_handler(func=None, running_local=False, quiet=True):
 
         event, context = axgs[0], axgs[1]
         logger.info("event: {}".format(json_dumps(event)))
-        logger.debug(
-            "Received '{resource}' request with params: {queryStringParameters} and body: {body}".format(**event)
-        )
 
         try:  # to get successfull execution
             response["body"] = func(event, context)
