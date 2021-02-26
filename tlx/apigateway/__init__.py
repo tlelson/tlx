@@ -1,35 +1,37 @@
-import sys
-import logging
 import functools
+import logging
+import sys
+
 from tlx.dynamodb.aux import json_dumps
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
 def proxy_response_handler(func=None, running_local=False, quiet=True):
-    """ A Decorator for lambda functions. The function to be decorated by have two positional arguments
-        (event, context) as any lambda handler would.  Decorating your handler allows you to write idomatic python
-        using returns and raising exception.  This handler catches and formats them as proxy response objects
-        suitable for APIG.
+    """A Decorator for lambda functions. The function to be decorated by have two positional arguments
+    (event, context) as any lambda handler would.  Decorating your handler allows you to write idomatic python
+    using returns and raising exception.  This handler catches and formats them as proxy response objects
+    suitable for APIG.
 
-        This function does the following:
-            - prints the received `event` to the debug logs
-            - Sets the generic error response
-            - Ensures raised exceptions are caught and formatted correctly
-            - Unforseen errors are NOT propogated back to the user
-            - Forseen exceptions ARE propogated back to the user in the `response.message` field
-                (Developers should raise APIGException if they want the message to return)
+    This function does the following:
+        - prints the received `event` to the debug logs
+        - Sets the generic error response
+        - Ensures raised exceptions are caught and formatted correctly
+        - Unforseen errors are NOT propogated back to the user
+        - Forseen exceptions ARE propogated back to the user in the `response.message` field
+            (Developers should raise APIGException if they want the message to return)
 
-        The decorated function should return data that can be converted to JSON.  This can be a list, dict, string,
-        number or boolean.  It should raise a APIGException if the user wants to return the error message and modify
-        the return code.  Otherwise all other Exceptions are returned as 500 response codes without a detailed error
-        message.
+    The decorated function should return data that can be converted to JSON.  This can be a list, dict, string,
+    number or boolean.  It should raise a APIGException if the user wants to return the error message and modify
+    the return code.  Otherwise all other Exceptions are returned as 500 response codes without a detailed error
+    message.
 
-        Set running_local=True if we're running locally (eg. we're not imported/running on AWS Lambda),
-        and Python stack traces will show when exceptions are raised.
-        Example usage: @proxy_response_handler(running_local=__name__=="__main__")
+    Set running_local=True if we're running locally (eg. we're not imported/running on AWS Lambda),
+    and Python stack traces will show when exceptions are raised.
+    Example usage: @proxy_response_handler(running_local=__name__=="__main__")
 
-        Set quiet=True (default) to suppress all error output including stack traces (eg. for Prod deployments)
+    Set quiet=True (default) to suppress all error output including stack traces (eg. for Prod deployments)
     """
     if not func:
         return functools.partial(proxy_response_handler, running_local=running_local, quiet=quiet)
@@ -54,8 +56,10 @@ def proxy_response_handler(func=None, running_local=False, quiet=True):
         # If the event is not from the apigateway a KeyError may be raised
         # and intentionally not caught
         event, context = axgs[0], axgs[1]
-        logger.info('event: {}'.format(json_dumps(event)))
-        logger.debug("Received '{resource}' request with params: {queryStringParameters} and body: {body}".format(**event))
+        logger.info("event: {}".format(json_dumps(event)))
+        logger.debug(
+            "Received '{resource}' request with params: {queryStringParameters} and body: {body}".format(**event)
+        )
 
         try:  # to get successfull execution
             response["body"]["response"] = func(event, context)
@@ -80,13 +84,14 @@ def proxy_response_handler(func=None, running_local=False, quiet=True):
         response["body"] = json_dumps(response["body"])
         logger.info("Returning repsonse: {response}".format(**locals()))
         return response
+
     return wrapper
 
 
 def require_valid_inputs(supplied, required):
-    """ Returns None if `supplied` is a superset of `required`.  Raises `APIGException` with
-        error code 400 if not.
-        Bothe params must be an iterable.
+    """Returns None if `supplied` is a superset of `required`.  Raises `APIGException` with
+    error code 400 if not.
+    Bothe params must be an iterable.
     """
 
     try:
@@ -102,12 +107,13 @@ def require_valid_inputs(supplied, required):
 
 class APIGException(Exception):
     """
-        Differentiate these exceptions from general ones so that we can return the exception message.
-        (We don't want to return general exception messages)
+    Differentiate these exceptions from general ones so that we can return the exception message.
+    (We don't want to return general exception messages)
 
-        e.g to return a HTTP 402 with a custom message, raise an exception like so:
-        `raise APIGException('Payment required', code=402)`
+    e.g to return a HTTP 402 with a custom message, raise an exception like so:
+    `raise APIGException('Payment required', code=402)`
     """
+
     def __init__(self, message, code=500):
         self.code = code
         Exception.__init__(self, message)
