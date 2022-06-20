@@ -7,13 +7,6 @@ from tlx.util import paginate
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# Bellow thows a syntax error in python 2.7. no idea why
-# py_version = float(f"{sys.version_info.major}.{sys.version_info.minor}")
-py_version = float("{}.{}".format(sys.version_info.major, sys.version_info.minor))
-
-if py_version < 3.6:
-    raise RuntimeError("This module is not for python <3.6.")
-
 
 def add_key(table, key, item):
     """If the item doesn't exist yet. Create the key.
