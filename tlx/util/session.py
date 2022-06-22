@@ -101,9 +101,8 @@ def _get_mfa_serial_if_user(profile):
                 identified_mfa_serial = line.split('=')[-1].strip()
             elif correct_profile and line.startswith('aws_access_key_id'):
                 is_user_profile = True
-            elif line == '\n':
-                if correct_profile:
-                    break  # No need to search futher
+            elif correct_profile and line.startswith("["):  # New profile block. Search complete.
+                break  
 
     if not correct_profile:
         msg = f"Profile '{profile}' not found.  Typo?"
