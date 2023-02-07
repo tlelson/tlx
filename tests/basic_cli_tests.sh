@@ -5,3 +5,4 @@ set -ev
 # platforms
 get-aws-creds --help
 dynamo-batch-write --help
+dynamo-clear-table --help

@@ -29,6 +29,7 @@ setup(
         'console_scripts': [
             'get-aws-creds=tlx.util.cli_apps.get_aws_creds:main',
             'dynamo-batch-write=tlx.dynamodb.cli_apps.dynamodb_batch_write:dbw',
+            'dynamo-clear-table=tlx.dynamodb.cli_apps.dynamodb_clear_table:dct',
         ],
     },
     data_files=[

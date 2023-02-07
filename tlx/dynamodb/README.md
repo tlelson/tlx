@@ -8,6 +8,7 @@ Some of the python functions have a CLI interface.
 As always, use the `--help` flag to get started
 
 - `dynamo-batch-write`
+- `dynamo-clear-table`
 
 ## Function Summary
 

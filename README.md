@@ -19,6 +19,7 @@ All CLI applications have their own detailed help menus.  Currently available to
 |---| --- |
 | `get-aws-creds` | returns temporary session credentials. Locally mock AWS runtime environments, debugging IAM etc |
 | `dynamo-batch-write` | loads scan results into a dynamo table.  Much better than `awscli` option |
+| `dynamo-clear-table` | empties the items from a dynamodb table |
 
 ```bash
 $ dynamo-batch-write --help
