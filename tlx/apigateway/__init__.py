@@ -2,7 +2,7 @@ import functools
 import logging
 import sys
 
-from tlx.dynamodb.aux import json_dumps
+from tlx.dynamodb import json_dumps
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
