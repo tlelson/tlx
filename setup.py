@@ -32,6 +32,15 @@ setup(
             'dynamo-clear-table=tlx.dynamodb.cli_apps.dynamodb_clear_table:dct',
         ],
     },
+    scripts=[
+        "tools/codebuild-logs",
+        "tools/aws-list-accounts",
+        "tools/pipeline-check",
+        "tools/pipeline-status",
+        "tools/stack-delete",
+        "tools/stack-events",
+        "tools/stack-status",
+    ],
     data_files=[
         'version.txt',
         'requirements.txt',

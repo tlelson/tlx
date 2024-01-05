@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+if [ -z "$1" ]; then
+	echo "provide a pipeline name as the first argument"
+	exit 1
+fi
+
+aws codepipeline get-pipeline-state \
+	--name "$1" | tee /tmp/pipeline-check.json | jq '
+    {pipelineName, updated, stages: [ 
+        .stageStates[] | select(.latestExecution.status) | 
+            if ( .stageName == "Source") and (.latestExecution.status == "Succeeded")  then
+            { stageName , status: .latestExecution.status,
+                sources: [
+                    .actionStates[] | {
+                        actionName, lastStatusChange: .latestExecution.lastStatusChange,
+                    } 
+                ]
+            }
+        elif .latestExecution.status == "Succeeded" then 
+            { stageName , status: .latestExecution.status,
+            time: .actionStates[-1].latestExecution.lastStatusChange,
+            }
+        else 
+            { stageName, status: .latestExecution.status, 
+                pipelineExecutionId: .latestExecution.pipelineExecutionId,
+                actions: [ .actionStates[]? | select(.latestExecution.status) |
+                if .latestExecution.status == "Failed" then 
+                    { actionName , status: .latestExecution.status, 
+                    summary: .latestExecution.summary, 
+                    message: .latestExecution.errorDetails.message ,
+                    time: .latestExecution.lastStatusChange,
+                    executionId: .latestExecution.actionExecutionId,
+                    url: .latestExecution.externalExecutionUrl,
+                    }  
+                else 
+                    { actionName , status: .latestExecution.status }  
+                end
+            ] }
+        end
+        ]
+    }
+'
+
+# Consider putting this in for successfull ones
+#actions: [ .actionStates[].actionName ],

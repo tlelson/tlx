@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+grep '\[profile os' ~/.aws/config | sed 's|\[profile \(.*\)\]|\1|g'

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+event_limit=10
+
+if [ -z "$1" ]; then
+	echo "provide a stack name as the first argument"
+	exit 1
+fi
+
+if [ -n "$2" ]; then
+	event_limit="$2"
+fi
+
+#aws cloudformation describe-stack-events --stack-name "$1" \
+#--max-items "${event_limit}" --query 'StackEvents[*].[LogicalResourceId, ResourceType, ResourceStatus, ResourceStatusReason]' --output table
+
+aws cloudformation describe-stack-events --stack-name "$1" \
+	--max-items "${event_limit}" | tee /tmp/stack-events.json | jq '.StackEvents | map({
+	ResourceType, LogicalResourceId, ResourceStatus, Timestamp, ResourceStatusReason })'

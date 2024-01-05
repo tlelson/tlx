@@ -1,0 +1,190 @@
+#!/usr/bin/env python
+
+import sys
+from tlx.util import paginate
+import boto3
+import botocore
+import logging
+
+# python -m pip install 'boto3-stubs[essential]'
+from mypy_boto3_cloudformation.client import CloudFormationClient
+from mypy_boto3_cloudformation.type_defs import WaiterConfigTypeDef
+
+from mypy_boto3_iam.client import IAMClient
+from mypy_boto3_iam.type_defs import GetRoleResponseTypeDef, ListRolePoliciesResponseTypeDef
+from mypy_boto3_s3.client import S3Client
+# python -m pip install 'boto3-stubs[logs]'
+from mypy_boto3_logs.client import CloudWatchLogsClient
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger()
+
+session = boto3.Session()
+
+iam: IAMClient = session.client('iam')
+s3: S3Client = session.client('s3')
+cfn: CloudFormationClient = session.client('cloudformation')
+ecr = session.client('ecr')
+logs: CloudWatchLogsClient = session.client('logs')
+
+def delete_role(name):
+
+    name='os-customer-customer-party-refer-LambdaFunctionRole-Rd4wia7AOWIf'
+    res: ListRolePoliciesResponseTypeDef =  iam.list_role_policies(RoleName=name)
+
+    for policy in res["PolicyNames"]:
+        iam.delete_policy(PolicyArn=policy)
+
+    # try:
+        iam.delete_role(RoleName=name)
+    # except botocore.exceptions.ClientError as err:
+        # if err.response['Error']['Code'] == 'ResourceNotFoundException':
+            # logger.warning(f"ResourceNotFoundException: Log group does not exist'{name}'. Skipping ...")
+
+def delete_log_group(name):
+    try:
+        logs.delete_log_group(logGroupName=name)
+    except botocore.exceptions.ClientError as err:
+        if err.response['Error']['Code'] == 'ResourceNotFoundException':
+            logger.warning(f"ResourceNotFoundException: Log group does not exist'{name}'. Skipping ...")
+
+def empty_ecr_repo(repo_name, dry_run=False):
+    if dry_run:
+        return
+
+    try:
+        _ = ecr.delete_repository(
+            repositoryName=repo_name,
+            force=True,  # if it contains images
+        )
+    except botocore.exceptions.ClientError as err:
+        if err.response['Error']['Code'] == 'RepositoryNotFoundException':
+            logger.warning(f"RepositoryNotFound: '{repo_name}'. Skipping ...")
+
+
+def empty_bucket(bucket_name, dry_run=False) -> int:
+    """ empty bucket of all files and versions and remove the bucket.  This is the `rm -rf`
+    operation so use with care.
+    Returns the number of items/versions deleted."""
+
+    # [{'Key': 'string', 'VersionId': 'string'},],
+    objects = []
+
+    try:
+        res = s3.list_object_versions(
+            Bucket=bucket_name,
+            MaxKeys=1000,  # TODO: paginate
+        )
+    except botocore.exceptions.ClientError as err:
+        if err.response['Error']['Code'] == 'NoSuchBucket':
+            logger.warning(f"NoSuchBucket: '{bucket_name}'. Skipping ...")
+        return 0
+
+    for version in res.get('Versions', []):
+        # TODO: Try objects.append(version) without filtering out other keys
+        objects.append({'Key': version['Key'], 'VersionId': version['VersionId']})
+
+    for version in res.get('DeleteMarkers', []):
+        objects.append({'Key': version['Key'], 'VersionId': version['VersionId']})
+
+    if dry_run or not objects:
+        return len(objects)
+
+    res = s3.delete_objects(
+        Bucket=bucket_name,
+        Delete={
+            'Objects': objects,
+            'Quiet': True,
+        },
+    )
+
+    return len(objects)
+
+
+def get_stack_resources(stack_name, resource):
+    """resource should be CFN type. e.g. 'AWS::ECR::Repository'"""
+    return [r.get('PhysicalResourceId', 'NO_RESOURCE_ID')
+            for r in paginate(cfn.list_stack_resources, StackName=stack_name)
+            if r['ResourceType'] == resource]
+
+
+def manual_deletions(stack, dry_run=False):
+    """ Some attributes need deleting manually or Cloudformation wont take the stack down."""
+
+    buckets = get_stack_resources(stack, 'AWS::S3::Bucket')
+    for bucket in buckets:
+        logger.info(f"  emptying bucket: '{bucket}'")
+        count = empty_bucket(bucket, dry_run=dry_run)
+        logger.info(f"  deleted {count} object versions")
+
+    ecr_repos = get_stack_resources(stack, 'AWS::ECR::Repository')
+    for repo in ecr_repos:
+        logger.info(f"  emptying ECR repo: '{repo}'")
+        count = empty_ecr_repo(repo, dry_run=dry_run)
+    logger.info(f"  deleted {len(ecr_repos)} ECR repos")
+
+    loggroups = get_stack_resources(stack, 'AWS::Logs::LogGroup')
+    for lg in loggroups:
+        delete_log_group(lg)
+
+    # roles = get_stack_resources(stack, 'AWS::IAM::Role')
+    # for role in roles:
+        # print(f"deleting role: {role}")
+        # delete_role(role)
+
+
+def main(stacks, dry_run=True):
+    """
+    Main:
+    For every stack in the list:
+    - get a list of every s3 bucket in the stack
+    - remove all objects in it
+    - delete the cloudformation stack
+    """
+
+    delete_stack_waiter = cfn.get_waiter('stack_delete_complete')
+    waiter_config: WaiterConfigTypeDef = {'Delay': 15, 'MaxAttempts': 50}
+
+    succeeded = []
+    failed = []
+
+    for stack in stacks:
+        logger.info(f"Stack: {stack}")
+        try:
+            manual_deletions(stack, dry_run)
+        except Exception as exc:
+            failed.append({'stack': stack, 'exception': exc})
+            continue
+
+        res = ""
+        if not dry_run:
+            try:
+                # DELETE_FAILED doesn't raise unless waited for
+                res = cfn.delete_stack(StackName=stack)
+                delete_stack_waiter.wait(StackName=stack, WaiterConfig=waiter_config)
+            except Exception as exc:
+                if res:
+                    logger.error(f"res: {res}")
+                failed.append({'stack': stack, 'exception': exc})
+                continue
+            logger.info("  stack deleted")
+        else:
+            logger.info("  stack NOT deleted (dry_run)")
+
+        succeeded.append(stack)
+    return succeeded, failed
+
+
+if __name__ == "__main__":
+    # stacks = [
+        # "os-customer-smoketest-pipeline",
+    # ]
+    stacks = sys.argv[1:]
+
+    if not stacks:
+        logger.error("no stacks provided ...")
+        sys.exit(1)
+
+    succeeded, failed = main(stacks, dry_run=False)
+    logger.info(f"successfully deleted {len(succeeded)} stacks")
+    logger.info(f"failed to delete the following stacks: {failed}")
