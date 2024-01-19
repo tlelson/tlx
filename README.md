@@ -1,13 +1,13 @@
 # TLX
 
-[![Build Status](https://travis-ci.org/eL0ck/tlx.svg?branch=master)](https://travis-ci.org/eL0ck/tlx)
-
 Tools for working with AWS.
 
 ## Install
 
+This package is not distributed through pypi.  Clone the repository and install it locally.
+
 ```bash
-pip install tlx
+pip install -e .
 ```
 
 ## CLI apps
@@ -57,9 +57,3 @@ Import these in a python program or shell.
 - [Utilities](tlx/util/README.md)
 - [Api Gateway Module](tlx/apigateway/README.md)
 - [Dynamodb Tools](tlx/dynamodb/README.md)
-
-## Light install
-If this grows too large it may become a namespace package so that individual parts can be installed easily. But until that time if you need a tool and only that tool, say for a deployment to AWS lambda or GCP App Engine, then:
-
-1.  Do a local install without dependencies: `pip install --no-deps -t package/location/ tlx`
-2.  Run your project and install the dependencies as you encounter import errors.
