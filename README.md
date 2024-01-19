@@ -42,6 +42,33 @@ Options:
   -h, --help                Show this message and exit.
 ```
 
+## Hacky CLI Tools 
+
+These tools are not production grade. Most have an example usages if no args are given.
+
+e.g 
+
+```bash 
+$ codebuild-logs 
+Returns the logs since a certain time
+Usage:
+         codebuild-logs.sh <build_id>, <start_time_iso> 
+Ex:
+    codebuild-logs.sh 'storybook-build' # (default: last hour) 
+Ex:
+    codebuild-logs.sh 'storybook-build' '30 min ago' 
+Ex:
+    codebuild-logs.sh 'storybook-build' '2023-12-19T17:40:31.611000+11:00' 
+```
+
+- `codebuild-logs`: streams codebuild logs to the terminal. Needs log group and optional time.
+- `aws-list-accounts`: list the accounts in your `.aws/config`
+- `pipeline-check`: returns json view of a codepipeline.
+- `pipeline-status`: optional arg to filter pipeline name
+- `stack-delete`: aggressively delete a stack. Be carefull. This will delete non-empty buckets. Non-empty ECR repos and remove log groups regardless of their retention policies.
+- `stack-events`: defaults to last 10 but provide a number to go back more/less 
+- `stack-status`: lists all cloudformation stacks and their status. provide filter expression to reduce the output
+
 
 ## Module Summary
 Import these in a python program or shell.
