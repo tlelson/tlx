@@ -1,3 +1,11 @@
 #!/usr/bin/env bash
 
-grep '\[profile os' ~/.aws/config | sed 's|\[profile \(.*\)\]|\1|g'
+# Reads ~/.aws/config and prints out the profile name and account number in a grepable
+# way.
+# Use ./aws-list-accounts | awk '{print $1}' to limit to profiles.
+
+awk '/\[/{prefix=$0; next} $1{print prefix $0}' ~/.aws/config |
+	grep account_id |
+	sed 's|\[profile \(.*\)\]|\1 |g' |
+	sed 's|sso_account_id =||g' |
+	column -t -s' '
