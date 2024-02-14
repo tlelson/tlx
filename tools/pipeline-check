@@ -9,12 +9,12 @@ aws codepipeline get-pipeline-state \
 	--name "$1" | tee /tmp/pipeline-check.json | jq '
     {pipelineName, updated, stages: [ 
         .stageStates[] | select(.latestExecution.status) | 
-            if ( .stageName == "Source") and (.latestExecution.status == "Succeeded")  then
+        if ( .stageName == "Source") and (.latestExecution.status == "Succeeded")  then
             { stageName , status: .latestExecution.status,
                 sources: [
                     .actionStates[] | {
                         actionName, lastStatusChange: .latestExecution.lastStatusChange,
-                        msg: .latestExecution.summary,
+                        msg: .latestExecution.summary | fromjson | .CommitMessage,
                     } 
                 ]
             }
@@ -33,6 +33,10 @@ aws codepipeline get-pipeline-state \
                     time: .latestExecution.lastStatusChange,
                     executionId: .latestExecution.actionExecutionId,
                     url: .latestExecution.externalExecutionUrl,
+                    }  
+                elif .latestExecution.status == "InProgress" then 
+                    { actionName , status: .latestExecution.status, 
+                    token: .latestExecution.token, 
                     }  
                 else 
                     { actionName , status: .latestExecution.status }  
