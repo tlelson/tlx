@@ -14,7 +14,7 @@ aws codepipeline get-pipeline-state \
                 sources: [
                     .actionStates[] | {
                         actionName, lastStatusChange: .latestExecution.lastStatusChange,
-                        msg: .latestExecution.summary | fromjson | .CommitMessage,
+                        msg: .latestExecution.summary,
                     } 
                 ]
             }
