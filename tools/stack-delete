@@ -5,6 +5,7 @@ from tlx.util import paginate
 import boto3
 import botocore
 import logging
+import string
 
 # python -m pip install 'boto3-stubs[essential]'
 from mypy_boto3_cloudformation.client import CloudFormationClient
@@ -15,6 +16,8 @@ from mypy_boto3_iam.type_defs import GetRoleResponseTypeDef, ListRolePoliciesRes
 from mypy_boto3_s3.client import S3Client
 # python -m pip install 'boto3-stubs[logs]'
 from mypy_boto3_logs.client import CloudWatchLogsClient
+# python -m pip install 'boto3-stubs[secretsmanager]'
+from mypy_boto3_secretsmanager.client import SecretsManagerClient
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -26,6 +29,14 @@ s3: S3Client = session.client('s3')
 cfn: CloudFormationClient = session.client('cloudformation')
 ecr = session.client('ecr')
 logs: CloudWatchLogsClient = session.client('logs')
+sm: SecretsManagerClient = session.client('secretsmanager')
+
+def delete_secret(secret_arn: str):
+    secret_id = secret_arn.rsplit(':')[-1]
+    print(f'deleting secret: "{secret_id}"')
+
+    # TODO: add try/catch for if secret not found
+    sm.delete_secret(SecretId=secret_arn, ForceDeleteWithoutRecovery=True)
 
 def delete_role(name):
 
@@ -127,6 +138,10 @@ def manual_deletions(stack, dry_run=False):
     for lg in loggroups:
         delete_log_group(lg)
 
+    secrets = get_stack_resources(stack, "AWS::SecretsManager::Secret")
+    for s in secrets:
+        delete_secret(s)
+
     # roles = get_stack_resources(stack, 'AWS::IAM::Role')
     # for role in roles:
         # print(f"deleting role: {role}")
@@ -176,6 +191,11 @@ def main(stacks, dry_run=True):
 
 
 if __name__ == "__main__":
+    # empty_bucket("knowledge-management-gha-333394050878")
+    # sys.exit(0)
+
+    # TODO: Delete secrets too: "os-cards-dev-domain-proxy-ecs"
+
     # stacks = [
         # "os-customer-smoketest-pipeline",
     # ]
