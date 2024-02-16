@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+if [ -z "$1" ]; then
+	printf "Returns the logs since a certain time\n"
+	printf "Usage:\n\t lambda-logs <λname> <start_time_iso> \n"
+	printf "Ex:\n    lambda-logs 'cert-check' # (default: last hour) \n"
+	printf "Ex:\n    lambda-logs 'cert-check' '30 min ago' \n"
+	printf "Ex:\n    lambda-logs 'cert-check' '2023-12-19T17:40:31.611000+11:00' \n"
+	exit 1
+fi
+
+since='1 hour ago'
+
+if [ -n "$2" ]; then
+	since="$2"
+fi
+
+lambda_name="$1"
+
+group_name=$(aws lambda get-function --function-name "$lambda_name" |
+	jq -r '.Configuration.LoggingConfig.LogGroup')
+
+awslogs get "${group_name}" --start "$since"

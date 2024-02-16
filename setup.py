@@ -40,6 +40,7 @@ setup(
         "tools/stack-delete",
         "tools/stack-events",
         "tools/stack-status",
+        "tools/lambda-logs",
     ],
     data_files=[
         'version.txt',

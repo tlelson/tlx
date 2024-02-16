@@ -2,10 +2,10 @@
 
 if [ -z "$1" ]; then
 	printf "Returns the logs since a certain time\n"
-	printf "Usage:\n\t codebuild-logs.sh <build_id>, <start_time_iso> \n"
-	printf "Ex:\n    codebuild-logs.sh 'storybook-build' # (default: last hour) \n"
-	printf "Ex:\n    codebuild-logs.sh 'storybook-build' '30 min ago' \n"
-	printf "Ex:\n    codebuild-logs.sh 'storybook-build' '2023-12-19T17:40:31.611000+11:00' \n"
+	printf "Usage:\n\t codebuild-logs <build_id>, <start_time_iso> \n"
+	printf "Ex:\n    codebuild-logs 'storybook-build' # (default: last hour) \n"
+	printf "Ex:\n    codebuild-logs 'storybook-build' '30 min ago' \n"
+	printf "Ex:\n    codebuild-logs 'storybook-build' '2023-12-19T17:40:31.611000+11:00' \n"
 	exit 1
 fi
 
