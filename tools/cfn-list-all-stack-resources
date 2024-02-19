@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+aws cloudformation list-stacks >/tmp/list-stacks.json
+
+# WORKS - Not parallel
+
+#cat /tmp/list-stacks.json | jq -r '.StackSummaries[] | select(.StackStatus != "DELETE_COMPLETE") | .StackName' | while read stack_name; do
+#aws cloudformation list-stack-resources --stack-name "${stack_name}" |
+#jq -c --arg stack_name "${stack_name}" '.StackResourceSummaries[] | {StackName: $stack_name, ResourceType, PhysicalResourceId, LogicalResourceId}'
+#done
+
+## Parrallel
+
+task() {
+	aws cloudformation list-stack-resources --stack-name "$1" |
+		jq -c --arg stack_name "$1" '.StackResourceSummaries[] | {StackName: $stack_name, ResourceType, PhysicalResourceId, LogicalResourceId}'
+}
+
+stacks=$(jq -r '.StackSummaries[] | select(.StackStatus != "DELETE_COMPLETE") | .StackName' </tmp/list-stacks.json)
+
+#echo $stacks
+
+N=32
+(
+	for stack_name in ${stacks}; do
+		((i = i % N))
+		((i++ == 0)) && wait
+		#echo "${stack_name}" &
+		task "${stack_name}" &
+	done
+)

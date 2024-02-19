@@ -41,6 +41,7 @@ setup(
         "tools/stack-events",
         "tools/stack-status",
         "tools/lambda-logs",
+        "tools/cfn-list-all-stack-resources",
     ],
     data_files=[
         'version.txt',
