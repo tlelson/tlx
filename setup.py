@@ -42,6 +42,7 @@ setup(
         "tools/stack-status",
         "tools/lambda-logs",
         "tools/cfn-list-all-stack-resources",
+        "tools/pipeline-approve",
     ],
     data_files=[
         'version.txt',
