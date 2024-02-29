@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 
+# This returns all resources deployed by all cfn stacks.  It takes an optional argument
+# that defines the level of concurrency.
+# E.g:
+#	cfn-list-all-stack-resources			# Uses 32 concurrent processes
+#	cfn-list-all-stack-resources 4			# Uses  4 concurrent processes
+
 aws cloudformation list-stacks >/tmp/list-stacks.json
 
-# WORKS - Not parallel
+concurrency=32
 
-#cat /tmp/list-stacks.json | jq -r '.StackSummaries[] | select(.StackStatus != "DELETE_COMPLETE") | .StackName' | while read stack_name; do
-#aws cloudformation list-stack-resources --stack-name "${stack_name}" |
-#jq -c --arg stack_name "${stack_name}" '.StackResourceSummaries[] | {StackName: $stack_name, ResourceType, PhysicalResourceId, LogicalResourceId}'
-#done
+if [ -n "$2" ]; then
+	concurrency="$2"
+fi
 
 ## Parrallel
 
@@ -18,12 +23,9 @@ task() {
 
 stacks=$(jq -r '.StackSummaries[] | select(.StackStatus != "DELETE_COMPLETE") | .StackName' </tmp/list-stacks.json)
 
-#echo $stacks
-
-N=32
 (
 	for stack_name in ${stacks}; do
-		((i = i % N))
+		((i = i % concurrency))
 		((i++ == 0)) && wait
 		#echo "${stack_name}" &
 		task "${stack_name}" &
