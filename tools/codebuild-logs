@@ -1,35 +1,43 @@
 #!/usr/bin/env bash
 
-if [ -z "$1" ]; then
-	printf "Returns the logs since a certain time\n"
-	printf "Usage:\n\t codebuild-logs <build_id>, <start_time_iso> \n"
-	printf "Ex:\n    codebuild-logs 'storybook-build' # (default: last hour) \n"
-	printf "Ex:\n    codebuild-logs 'storybook-build' '30 min ago' \n"
-	printf "Ex:\n    codebuild-logs 'storybook-build' '2023-12-19T17:40:31.611000+11:00' \n"
-	exit 1
-fi
+# DEPRECATED:
+# ... in favor of the more generic `awslogs`. e.g:
+# awslogs get ${loggroup}
+#  -GS to omit lg and time from each line
+#  -w to tail the log group
 
-since='1 hour ago'
+echo "use 'awslogs' get \$loggroup -GS/-w"
 
-if [ -n "$2" ]; then
-	since="$2"
-fi
+#if [ -z "$1" ]; then
+#printf "Returns the logs since a certain time\n"
+#printf "Usage:\n\t codebuild-logs <build_id>, <start_time_iso> \n"
+#printf "Ex:\n    codebuild-logs 'storybook-build' # (default: last hour) \n"
+#printf "Ex:\n    codebuild-logs 'storybook-build' '30 min ago' \n"
+#printf "Ex:\n    codebuild-logs 'storybook-build' '2023-12-19T17:40:31.611000+11:00' \n"
+#exit 1
+#fi
 
-build_id=$(aws codebuild list-builds-for-project \
-	--project-name "$1" --max-items=1 | jq -r '.ids[0]')
+#since='1 hour ago'
 
-lg=$(aws codebuild batch-get-builds \
-	--ids "${build_id}" | jq '.builds[].logs | {groupName, streamName}')
+#if [ -n "$2" ]; then
+#since="$2"
+#fi
 
-start_time=$(date -d"$since" +%s)000
+#build_id=$(aws codebuild list-builds-for-project \
+#--project-name "$1" --max-items=1 | jq -r '.ids[0]')
 
-group_name=$(echo "$lg" | jq -r '.groupName')
-stream_name=$(echo "$lg" | jq -r '.streamName')
+#lg=$(aws codebuild batch-get-builds \
+#--ids "${build_id}" | jq '.builds[].logs | {groupName, streamName}')
 
-aws logs get-log-events \
-	--log-group-name "${group_name}" \
-	--log-stream-name "${stream_name}" \
-	--no-start-from-head \
-	--start-time "${start_time}" \
-	--end-time "$(date +%s)000" |
-	jq -r '.events[].message' | sed '/^$/d'
+#start_time=$(date -d"$since" +%s)000
+
+#group_name=$(echo "$lg" | jq -r '.groupName')
+#stream_name=$(echo "$lg" | jq -r '.streamName')
+
+#aws logs get-log-events \
+#--log-group-name "${group_name}" \
+#--log-stream-name "${stream_name}" \
+#--no-start-from-head \
+#--start-time "${start_time}" \
+#--end-time "$(date +%s)000" |
+#jq -r '.events[].message' | sed '/^$/d'
