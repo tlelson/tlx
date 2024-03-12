@@ -13,7 +13,7 @@ aws codepipeline get-pipeline-state \
             { stageName , status: .latestExecution.status,
                 sources: [
                     .actionStates[] |
-                        if .latestExecution.summary|startswith("{") then
+                        if (.latestExecution != null) and ( .latestExecution.summary|startswith("{") ) then
                             {
                                 actionName, lastStatusChange: .latestExecution.lastStatusChange,
                                 msg: .latestExecution.summary | fromjson |
@@ -55,20 +55,3 @@ aws codepipeline get-pipeline-state \
         ]
     }
 '
-
-#{
-#actionName, lastStatusChange: .latestExecution.lastStatusChange,
-#msg: .latestExecution | "yoyo"
-#}
-
-# Used to use this but can't garuntee its json
-# msg: .latestExecution.summary | fromjson | .CommitMessage,
-
-# Consider putting this in for successfull ones
-#actions: [ .actionStates[].actionName ],
-
-#if ( .summary|startswith("{") ) then
-#.summary | fromjson | .CommitMessage
-#else
-#.summary
-#end
