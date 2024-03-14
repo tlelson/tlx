@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# This is probably getting too complex for jq now.
+# If I used go/python for this I'd also augment the output of each stage with the code
+# commit hash and message used for each execution.  As it stands this needs to run in a
+# separate command.
+
 if [ -z "$1" ]; then
 	echo "provide a pipeline name as the first argument"
 	exit 1
@@ -39,11 +44,11 @@ aws codepipeline get-pipeline-state \
                 if .latestExecution.status == "Failed" then
                     { actionName , status: .latestExecution.status,
                     summary: .latestExecution.summary,
-                    message: .latestExecution.errorDetails.message ,
-                    time: .latestExecution.lastStatusChange,
+                    message: .latestExecution.errorDetails.message? ,
+                    time: .latestExecution.lastStatusChange? ,
                     executionId: .latestExecution.actionExecutionId,
                     url: .latestExecution.externalExecutionUrl,
-                    }
+                } | delpaths([. | to_entries | .[] | select(.value == null) | [.key]])
                 elif .latestExecution.status == "InProgress" then
                     { actionName , status: .latestExecution.status,
                     token: .latestExecution.token,
