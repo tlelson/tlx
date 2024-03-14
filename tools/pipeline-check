@@ -29,6 +29,7 @@ aws codepipeline get-pipeline-state \
             }
         elif .latestExecution.status == "Succeeded" then
             { stageName , status: .latestExecution.status,
+                pipelineExecutionId: .latestExecution.pipelineExecutionId,
                 time: [ .actionStates[].latestExecution.lastStatusChange | select(. != null ) ] | sort | .[-1] ,
             }
         else
