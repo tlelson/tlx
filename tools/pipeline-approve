@@ -33,10 +33,10 @@ fi
 echo "approving stage: ${stage_to_approve}"
 
 action=$(echo "${pipeline}" | jq -rc --arg stage "${stage_to_approve}" '.stages[] | select(.stageName == $stage) | .actions[] | select(.status == "InProgress") | {actionName, token}')
-action_name=$(echo "$action" | jq '.actionName')
-token=$(echo "$action" | jq '.token')
+action_name=$(echo "$action" | jq -r '.actionName')
+token=$(echo "$action" | jq -r '.token')
 
-echo aws codepipeline put-approval-result \
+aws codepipeline put-approval-result \
 	--pipeline-name "${pipeline_name}" \
 	--stage-name "${stage_to_approve}" \
 	--action-name "${action_name}" \
