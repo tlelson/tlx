@@ -8,11 +8,11 @@ fi
 
 aws codepipeline list-pipelines | jq '.pipelines[].name' | grep "${filter_pattern}" |
 	xargs -P20 -n1 -I {} pipeline-check {} | jq -c ' {
-		pipelineName, stages: [.stages | 
-		if all(.status == "Succeeded") then 
-			.[-1] | 
+		pipelineName, stages: [.stages |
+		if all(.status == "Succeeded") then
+			.[-1] |
 				{status, time}
-		elif any(.status == "Failed") then 
+		elif any(.status == "Failed") then
 			.[] | select(.status == "Failed") |
 				{status, time: .time?}
 		else
