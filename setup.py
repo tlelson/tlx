@@ -44,6 +44,7 @@ setup(
         "tools/cfn-list-all-stack-resources",
         "tools/pipeline-approve",
         "tools/aws-who-am-i",
+        "tools/cfn-exports",
     ],
     data_files=[
         'version.txt',
