@@ -43,6 +43,7 @@ setup(
         "tools/lambda-logs",
         "tools/cfn-list-all-stack-resources",
         "tools/pipeline-approve",
+        "tools/aws-who-am-i",
     ],
     data_files=[
         'version.txt',

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+aws-list-accounts | grep "$(aws sts get-caller-identity | jq -r '.Account')"
