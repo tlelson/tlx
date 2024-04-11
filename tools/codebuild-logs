@@ -6,7 +6,7 @@
 #  -GS to omit lg and time from each line
 #  -w to tail the log group
 
-echo "use 'awslogs' get \$loggroup -GS/-w"
+echo "use 'awslogs get \$loggroup --start \"5 min ago\" -GS/-w'"
 
 #if [ -z "$1" ]; then
 #printf "Returns the logs since a certain time\n"
