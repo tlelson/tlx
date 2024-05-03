@@ -1,0 +1,5 @@
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+export PATH="${PATH}:${SCRIPT_DIR}"
+
+alias hosted-zones="aws route53 list-hosted-zones | jq '.HostedZones[].Name' "
+alias clusters="aws ecs list-clusters | jq -r 'clusterArns'"

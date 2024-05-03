@@ -42,23 +42,31 @@ Options:
   -h, --help                Show this message and exit.
 ```
 
-## Hacky CLI Tools 
+## Hacky CLI Tools
 
-These tools are not production grade. Most have an example usages if no args are given.
+A collection of tools and alias' that make remembering aws cli commands easier and faster.
 
-e.g 
+They are not production grade.
 
-```bash 
-$ codebuild-logs 
+It is a manual step to source `./tools/rcfile` because you may choose to run it in a sub-shell to avoid polluting your environment.  For example I add the following alias to my .bashrc.
+```bash
+alias awsenv='bash --rcfile ${TLXPATH}/tools/rcfile'
+```
+Otherwise source the `.tools/alias` in your own way.
+
+Most have an example usages if no args are given. e.g
+
+```bash
+$ codebuild-logs
 Returns the logs since a certain time
 Usage:
-         codebuild-logs.sh <build_id>, <start_time_iso> 
+         codebuild-logs.sh <build_id>, <start_time_iso>
 Ex:
-    codebuild-logs.sh 'storybook-build' # (default: last hour) 
+    codebuild-logs.sh 'storybook-build' # (default: last hour)
 Ex:
-    codebuild-logs.sh 'storybook-build' '30 min ago' 
+    codebuild-logs.sh 'storybook-build' '30 min ago'
 Ex:
-    codebuild-logs.sh 'storybook-build' '2023-12-19T17:40:31.611000+11:00' 
+    codebuild-logs.sh 'storybook-build' '2023-12-19T17:40:31.611000+11:00'
 ```
 
 - `codebuild-logs`: streams codebuild logs to the terminal. Needs log group and optional time.
@@ -66,7 +74,7 @@ Ex:
 - `pipeline-check`: returns json view of a codepipeline.
 - `pipeline-status`: optional arg to filter pipeline name
 - `stack-delete`: aggressively delete a stack. Be carefull. This will delete non-empty buckets. Non-empty ECR repos and remove log groups regardless of their retention policies.
-- `stack-events`: defaults to last 10 but provide a number to go back more/less 
+- `stack-events`: defaults to last 10 but provide a number to go back more/less
 - `stack-status`: lists all cloudformation stacks and their status. provide filter expression to reduce the output
 
 

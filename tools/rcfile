@@ -1,0 +1,7 @@
+GREEN='\[\033[1;32m\]'
+RED='\[\033[0;31m\]'
+NC='\[\033[0m\]'
+export PS1="(aws) ${GREEN}\W ${RED}❯${NC} "
+
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+source "${SCRIPT_DIR}/alias"
