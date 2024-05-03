@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+if [ -z "$1" ]; then
+	echo "provide a stack name as the first argument"
+	exit 1
+fi
+stack_name="$1"
+
+aws cloudformation describe-stacks --stack-name "$stack_name" |
+	jq -r '.Stacks[0].Parameters'
+
