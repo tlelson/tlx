@@ -32,6 +32,10 @@ setup(
             'dynamo-clear-table=tlx.dynamodb.cli_apps.dynamodb_clear_table:dct',
         ],
     },
+    scripts=[
+        # This is the only tool that is used outside of an aws account context.
+        "tools/aws-list-accounts",
+    ],
     data_files=[
         'version.txt',
         'requirements.txt',
