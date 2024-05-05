@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-alias ecs-clusters="aws ecs list-clusters | jq -r '.clusterArns[]'"
+alias ecs-clusters="aws --output json ecs list-clusters | jq -r '.clusterArns[]'"
 
 ecs-services() {
 	# returns cluster/service (not full ARN)
 	{
 		echo "CLUSTER SERVICE"
-		ecs-clusters | xargs -P4 -n1 -I {} aws ecs list-services --cluster {} |
+		ecs-clusters | xargs -P4 -n1 -I {} aws --output json ecs list-services --cluster {} |
 			jq -r '.serviceArns[] | sub("^[^/]+/"; "") | sub("/"; " ")'
 	} | column -t
 }
@@ -25,7 +25,7 @@ ecs-tasks() {
 		exit 1
 	fi
 
-	aws ecs list-tasks --cluster "$1" \
+	aws --output json ecs list-tasks --cluster "$1" \
 		--service-name "$2" \
 		--desired-status RUNNING | jq -r '.taskArns[] |
 		sub(".*/"; "")'
@@ -48,7 +48,7 @@ ecs-shell() {
 
 	taskID=$(ecs-tasks "$cluster" "$service")
 
-	aws ecs execute-command \
+	aws --output json ecs execute-command \
 		--cluster "$cluster" \
 		--task "$taskID" \
 		--command "/bin/bash" \
