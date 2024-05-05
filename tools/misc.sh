@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 alias vpc-endpoint-connections="aws --output json ec2 describe-vpc-endpoint-connections | jq -c '
   .VpcEndpointConnections[] | { ServiceId, VpcEndpointId, VpcEndpointState, Tags}'
 "
