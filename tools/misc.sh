@@ -1,8 +1,4 @@
-SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
-export PATH="${PATH}:${SCRIPT_DIR}"
-
 alias hosted-zones="aws route53 list-hosted-zones | jq -r '.HostedZones[].Name' "
-alias clusters="aws ecs list-clusters | jq -r 'clusterArns'"
 alias vpc-endpoint-connections="aws ec2 describe-vpc-endpoint-connections | jq -c '
   .VpcEndpointConnections[] | { ServiceId, VpcEndpointId, VpcEndpointState, Tags}'
 "

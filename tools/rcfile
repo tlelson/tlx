@@ -4,4 +4,6 @@ NC='\[\033[0m\]'
 export PS1="(aws) ${GREEN}\W ${RED}❯${NC} "
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
-source "${SCRIPT_DIR}/alias"
+export PATH="${PATH}:${SCRIPT_DIR}"
+source "${SCRIPT_DIR}/misc.sh"
+source "${SCRIPT_DIR}/ecs.sh"
