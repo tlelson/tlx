@@ -84,13 +84,15 @@ stack-failed() {
 	fi
 	stack_name="$1"
 
-	stack-events $stack_name 50 | jq '.[] | select(.ResourceStatus|test(".*FAILED")) '
+	stack-events "$stack_name" 50 | jq '
+		.[] | select(.ResourceStatus|test(".*FAILED")) '
 }
 
 stack-params() {
 
 	if [ -z "$1" ]; then
-		echo "provide a stack name as the first argument"
+		echo "Output is JSON by default because the output may be used as input for deploy."
+		echo "${FUNCNAME[0]} \$stack_name | jtbl"
 		exit 1
 	fi
 	stack_name="$1"
