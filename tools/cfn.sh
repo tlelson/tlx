@@ -102,15 +102,17 @@ stack-params() {
 
 stack-status() {
 
-	cmd="aws --output json cloudformation list-stacks | \
-		jq -c '.StackSummaries[] | [ .StackName, .StackStatus] ' \
-		| grep -v 'DELETE_COMPLETE' \
-		"
+	stack_status=$(aws --output json cloudformation list-stacks |
+		jq -rc '.StackSummaries[] | [ .StackName[:60], .StackStatus] | @tsv' |
+		grep -v 'DELETE_COMPLETE')
 
-	if [ "$#" -ne 0 ]; then
-		cmd="${cmd} | grep --color=auto \"$*\" "
-	fi
-
-	eval "$cmd"
+	{
+		echo "STACKNAME STATUS"
+		if [ "$#" -ne 0 ]; then
+			echo "$stack_status" | grep --color=auto "$*"
+		else
+			echo "$stack_status"
+		fi
+	} | column -t
 
 }
