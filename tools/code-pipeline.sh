@@ -10,7 +10,7 @@ code-pipeline-check() {
 	fi
 
 	aws --output json codepipeline get-pipeline-state \
-		--name "$1" | tee /tmp/pipeline-check.json | jq '
+		--name "$1" | jq '
 		{pipelineName, updated, stages: [
 			.stageStates[] | select(.latestExecution.status) |
 			if ( .stageName == "Source") and (.latestExecution.status == "Succeeded")  then

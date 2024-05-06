@@ -72,7 +72,7 @@ stack-events() {
 	#--max-items "${event_limit}" --query 'StackEvents[*].[LogicalResourceId, ResourceType, ResourceStatus, ResourceStatusReason]' --output table
 
 	aws --output json cloudformation describe-stack-events --stack-name "$1" \
-		--max-items "${event_limit}" | tee /tmp/stack-events.json | jq '.StackEvents | map({
+		--max-items "${event_limit}" | jq '.StackEvents | map({
 		ResourceType, LogicalResourceId, ResourceStatus, Timestamp, ResourceStatusReason })'
 
 }
