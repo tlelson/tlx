@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+alias code-pipelines="aws --output json codepipeline list-pipelines | jq -r '.pipelines[].name' "
+alias code-pipeline-get-state='aws --output json codepipeline get-pipeline-state --name '
+
 code-pipeline-check() {
 
 	# This is probably getting too complex for jq now.
@@ -151,4 +154,5 @@ code-pipeline-status() {
 	    ]  | .[0]
 	    }' | jq -rc '[.pipelineName, .stages.status, .stages.time?[:19] ] | @tsv'
 	} | column -t
+
 }
