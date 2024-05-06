@@ -12,15 +12,17 @@ cfn-exports() {
 	#	cfn-exports
 	#	cfn-exports 'subnet'
 
-	cmd='aws --output json cloudformation list-exports'
+	exports=$(aws --output json cloudformation list-exports)
+
+	jq_exp='.Exports[]'
 
 	if [ "$#" -ne 0 ]; then
-		cmd="${cmd} | jq '.Exports[] | select(.Name|test(\".*${*}.*\"))'"
-	else
-		cmd="${cmd} | jq '.Exports[]'"
+		jq_exp+="| select(.Name|test(\".*${*}.*\"))"
 	fi
 
-	eval "$cmd"
+	# Tabulate response
+	jq_exp+='| {Stack: .ExportingStackId | sub("^[^/]+/"; "") | sub("/.*$"; ""), Name, Value}'
+	echo "${exports}" | jq -c "$jq_exp" | jtbl -n
 }
 
 cfn-resources() {
@@ -116,5 +118,18 @@ stack-status() {
 			echo "$stack_status"
 		fi
 	} | column -t
+
+}
+
+stack-template() {
+	if [ -z "$1" ]; then
+		echo "Returns the template used to deploy a stack"
+		echo "${FUNCNAME[0]} \$stack_name"
+		exit 1
+	fi
+	stack_name="$1"
+
+	aws cloudformation get-template --stack-name "$stack_name" |
+		jq -r '.TemplateBody'
 
 }
