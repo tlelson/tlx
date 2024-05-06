@@ -62,6 +62,8 @@ code-pipeline-check() {
 	'
 }
 
+export -f code-pipeline-check
+
 code-pipeline-approve() {
 	if [ -z "$1" ]; then
 		echo "provide a pipeline name as the first argument, and optionally, the stage as a second argument.  If only one stage is approvable, it will be approved."
@@ -109,27 +111,44 @@ code-pipeline-approve() {
 }
 
 code-pipeline-status() {
+	# Define the help text
+	local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
+
+	Optional Arguments:
+	pipeline_name_filter	grep regex to filter pipelines
+
+	Options:
+	--help       Display this help message"
+
+	# Check if the '--help' flag is present
+	if [[ "$*" == *"--help"* ]]; then
+		echo "$help_text"
+		return 0 # Exit the function after printing help
+	fi
+
 	filter_pattern='"*"'
 
 	if [ "$#" -ne 0 ]; then
 		filter_pattern="$*"
 	fi
 
-	# TODO: tabulate
-	aws --output json codepipeline list-pipelines | jq '.pipelines[].name' | grep "${filter_pattern}" |
-		xargs -P20 -n1 -I {} pipeline-check {} | jq -c ' {
-			pipelineName, stages: [.stages |
-			if all(.status == "Succeeded") then
-				.[-1] |
-					{status, time}
-			elif any(.status == "Failed") then
-				.[] | select(.status == "Failed") |
-					{status, time: .time?}
-			else
-				.[] | select(.status != "Succeeded") |
-					{status, time}
-			end
-		]  | .[0]
-		}' | jq -c '[.pipelineName, .stages.status, .stages.time?[:19] ]'
-
+	{
+		echo "PIPELINE STATUS TIME"
+		aws --output json codepipeline list-pipelines | jq '.pipelines[].name' |
+			grep "${filter_pattern}" | xargs -P20 -n1 -I {} bash -c 'code-pipeline-check {}' |
+			jq -c ' {
+	    	pipelineName, stages: [.stages |
+	    	if all(.status == "Succeeded") then
+	    		.[-1] |
+	    			{status, time}
+	    	elif any(.status == "Failed") then
+	    		.[] | select(.status == "Failed") |
+	    			{status, time: .time?}
+	    	else
+	    		.[] | select(.status != "Succeeded") |
+	    			{status, time}
+	    	end
+	    ]  | .[0]
+	    }' | jq -rc '[.pipelineName, .stages.status, .stages.time?[:19] ] | @tsv'
+	} | column -t
 }
