@@ -9,7 +9,7 @@ cfn-exports() {
 	# This returns all cfn exports.  It takes an optional argument that filters
 	# by glob pattern
 	# E.g:
-	#	cfn-exports
+	#	cfn-exports | jtbl -n
 	#	cfn-exports 'subnet'
 
 	exports=$(aws --output json cloudformation list-exports)
@@ -22,7 +22,7 @@ cfn-exports() {
 
 	# Tabulate response
 	jq_exp+='| {Stack: .ExportingStackId | sub("^[^/]+/"; "") | sub("/.*$"; ""), Name, Value}'
-	echo "${exports}" | jq -c "$jq_exp" | jtbl -n
+	echo "${exports}" | jq -c "$jq_exp"
 }
 
 cfn-resources() {
