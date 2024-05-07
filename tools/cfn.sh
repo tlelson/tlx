@@ -24,6 +24,7 @@ cfn-exports() {
 	jq_exp+='| {Stack: .ExportingStackId | sub("^[^/]+/"; "") | sub("/.*$"; ""), Name, Value}'
 	echo "${exports}" | jq -c "$jq_exp"
 }
+export -f cfn-exports
 
 cfn-resources() {
 	# This returns all resources deployed by all cfn stacks.  It takes an optional argument
@@ -57,6 +58,7 @@ cfn-resources() {
 	)
 
 }
+export -f cfn-resources
 
 stack-events() {
 	event_limit=10
@@ -78,6 +80,7 @@ stack-events() {
 		ResourceType, LogicalResourceId, ResourceStatus, Timestamp, ResourceStatusReason })'
 
 }
+export -f stack-events
 
 stack-failed() {
 	if [ -z "$1" ]; then
@@ -89,6 +92,7 @@ stack-failed() {
 	stack-events "$stack_name" 50 | jq '
 		.[] | select(.ResourceStatus|test(".*FAILED")) '
 }
+export -f stack-failed
 
 stack-params() {
 
@@ -103,6 +107,7 @@ stack-params() {
 		jq -r '.Stacks[0].Parameters'
 
 }
+export -f stack-params
 
 stack-status() {
 
@@ -120,6 +125,7 @@ stack-status() {
 	} | column -t
 
 }
+export -f stack-status
 
 stack-template() {
 	if [ -z "$1" ]; then
@@ -133,3 +139,4 @@ stack-template() {
 		jq -r '.TemplateBody'
 
 }
+export -f stack-template

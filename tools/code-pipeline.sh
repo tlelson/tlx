@@ -64,7 +64,6 @@ code-pipeline-check() {
 		}
 	'
 }
-
 export -f code-pipeline-check
 
 code-pipeline-approve() {
@@ -112,6 +111,7 @@ code-pipeline-approve() {
 		--token "${token}"
 
 }
+export -f code-pipeline-approve
 
 code-pipeline-status() {
 	# Define the help text
@@ -156,3 +156,4 @@ code-pipeline-status() {
 	} | column -t
 
 }
+export -f code-pipeline-status

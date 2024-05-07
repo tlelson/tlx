@@ -24,3 +24,4 @@ record-sets() {
 	#@tsv' | grep -v 'NS\|SOA'
 
 }
+export -f record-sets

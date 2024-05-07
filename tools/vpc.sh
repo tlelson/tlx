@@ -37,3 +37,4 @@ vpc-endpoint-approve-pending() {
 
 	done </tmp/dvec.json
 }
+export -f vpc-endpoint-approve-pending

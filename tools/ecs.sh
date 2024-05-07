@@ -10,6 +10,7 @@ ecs-services() {
 			jq -r '.serviceArns[] | sub("^[^/]+/"; "") | sub("/"; " ")'
 	} | column -t
 }
+export -f ecs-services
 
 ecs-tasks() {
 	# returns taskId only
@@ -30,6 +31,7 @@ ecs-tasks() {
 		--desired-status RUNNING | jq -r '.taskArns[] |
 		sub(".*/"; "")'
 }
+export -f ecs-tasks
 
 ecs-shell() {
 	help="provide a cluster as the first argument and a service as the second"
@@ -54,3 +56,4 @@ ecs-shell() {
 		--command "/bin/bash" \
 		--interactive
 }
+export -f ecs-shell
