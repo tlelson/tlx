@@ -135,7 +135,7 @@ stack-template() {
 	fi
 	stack_name="$1"
 
-	aws cloudformation get-template --stack-name "$stack_name" |
+	aws --output json cloudformation get-template --stack-name "$stack_name" |
 		jq -r '.TemplateBody'
 
 }
