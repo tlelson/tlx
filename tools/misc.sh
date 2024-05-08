@@ -24,3 +24,17 @@ load-balancer() {
 	aws --output json elbv2 describe-load-balancers --names "$lb" | jq '.LoadBalancers[]'
 
 }
+export -f load-balancer
+
+enis() {
+	# Use aws ec2 describe-network-interfaces --filters to get details. Its actually very
+	# good.
+
+	aws --output json ec2 describe-network-interfaces | jq '[.NetworkInterfaces[] |
+		{NetworkInterfaceId, Description, InterfaceType, PrivateIpAddress,
+		PublicIP: (.. | .PublicIp? // empty)
+		}]
+	'
+
+}
+export -f enis

@@ -5,15 +5,17 @@ alias code-pipeline-get-state='aws --output json codepipeline get-pipeline-state
 
 code-pipeline-check() {
 
+	# TODO: For each executionId (at each stage, get the Source version of each)
 	# This is probably getting too complex for jq now.
 
 	if [ -z "$1" ]; then
 		echo "${FUNCNAME[0]} \$pipeline_name "
 		exit 1
 	fi
+	pipeline_name="$1"
 
 	aws --output json codepipeline get-pipeline-state \
-		--name "$1" | jq '
+		--name "$pipeline_name" | jq '
 		{pipelineName, updated, stages: [
 			.stageStates[] | select(.latestExecution.status) |
 			if ( .stageName == "Source") and (.latestExecution.status == "Succeeded")  then
