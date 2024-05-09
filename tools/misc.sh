@@ -17,7 +17,7 @@ load-balancer() {
 
 	if [ -z "$1" ]; then
 		echo "$help"
-		exit 1
+		return 1
 	fi
 	lb="$1"
 

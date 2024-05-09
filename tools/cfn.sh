@@ -65,7 +65,7 @@ stack-events() {
 
 	if [ -z "$1" ]; then
 		echo "provide a stack name as the first argument"
-		exit 1
+		return 1
 	fi
 
 	if [ -n "$2" ]; then
@@ -85,7 +85,7 @@ export -f stack-events
 stack-failed() {
 	if [ -z "$1" ]; then
 		echo "provide a stack name as the first argument"
-		exit 1
+		return 1
 	fi
 	stack_name="$1"
 
@@ -99,7 +99,7 @@ stack-params() {
 	if [ -z "$1" ]; then
 		echo "Output is JSON by default because the output may be used as input for deploy."
 		echo "${FUNCNAME[0]} \$stack_name | jtbl"
-		exit 1
+		return 1
 	fi
 	stack_name="$1"
 
@@ -131,7 +131,7 @@ stack-template() {
 	if [ -z "$1" ]; then
 		echo "Returns the template used to deploy a stack"
 		echo "${FUNCNAME[0]} \$stack_name"
-		exit 1
+		return 1
 	fi
 	stack_name="$1"
 

@@ -10,7 +10,7 @@ code-pipeline-check() {
 
 	if [ -z "$1" ]; then
 		echo "${FUNCNAME[0]} \$pipeline_name "
-		exit 1
+		return 1
 	fi
 	pipeline_name="$1"
 
@@ -73,7 +73,7 @@ code-pipeline-approve() {
 		echo "provide a pipeline name as the first argument, and optionally, the stage as a second argument.  If only one stage is approvable, it will be approved."
 		echo "e.g ${FUNCNAME[0]} 'meta' "
 		echo "e.g ${FUNCNAME[0]} 'meta' 'Approval_To_Staging' "
-		exit 1
+		return 1
 	fi
 	pipeline_name="$1"
 	# TODO: Could do this more efficiently with aws cmd
@@ -91,7 +91,7 @@ code-pipeline-approve() {
 				stage=$(echo "$stage" | tr -d '\n')
 				echo "\"${stage}\""
 			done
-			exit 1
+			return 1
 		else
 			stage_to_approve=$(echo "${approvable_stages[0]}" | tr -d '\n')
 		fi

@@ -18,12 +18,12 @@ ecs-tasks() {
 
 	if [ -z "$1" ]; then
 		echo "$help"
-		exit 1
+		return 1
 	fi
 
 	if [ -z "$2" ]; then
 		echo "$help"
-		exit 1
+		return 1
 	fi
 
 	aws --output json ecs list-tasks --cluster "$1" \
@@ -38,13 +38,13 @@ ecs-shell() {
 
 	if [ -z "$1" ]; then
 		echo "$help"
-		exit 1
+		return 1
 	fi
 	cluster="$1"
 
 	if [ -z "$2" ]; then
 		echo "$help"
-		exit 1
+		return 1
 	fi
 	service="$2"
 
