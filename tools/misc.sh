@@ -73,6 +73,7 @@ scps() {
 }
 org-units() {
 	local help_text="Usage: ${FUNCNAME[0]} [ARGS] [options]
+	Output: JSON (usefull to pick names out and recurse)
 
 	Arguments:
 	target-id	Root OU. (use 'roots' to list)
@@ -91,7 +92,29 @@ org-units() {
 		return 1
 	fi
 
-	aws organizations list-organizational-units-for-parent \
+	aws --output json organizations list-organizational-units-for-parent \
 		--query 'OrganizationalUnits[].{Id: Id, Name: Name}' \
 		--parent-id "$1"
+}
+export -f org-units
+
+org-tree() {
+	# TODO: Speed up (python? go?)
+	# Add accounts and SCPs to each org-unit
+
+	root=$(aws --output json organizations list-roots | jq -r '.Roots[] | select(.Name=="Root") | .Id ')
+
+	orgs=$(org-units "$root" | jq -c '.[]') # jsonlines for loop to read.
+
+	tree='[]'
+	while IFS= read -r obj; do
+		id=$(echo "$obj" | jq -r '.Id')
+		children=$(org-units "$id")
+		updated_obj=$(echo "$obj" | jq --argjson children "$children" '.Children = $children')
+		tree=$(jq --argjson updated_obj "$updated_obj" '. + [$updated_obj] ' <<<"$tree")
+
+	done <<<"$orgs"
+
+	tree='{"Id":"'"$root"'","Children":'"$tree"'}'
+	echo "$tree"
 }
