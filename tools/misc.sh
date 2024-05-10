@@ -1,3 +1,7 @@
+#!/usr/bin/env bash
+
+alias aws-who-am-i='aws-list-accounts | grep "$(aws --output json sts get-caller-identity | jq -r "'".Account"'")"'
+
 alias load-balancers="aws --output json elbv2 describe-load-balancers | jq -r '.LoadBalancers[].LoadBalancerName' "
 
 load-balancer() {
@@ -71,6 +75,8 @@ scps() {
 	fi
 
 }
+export -f scps
+
 org-units() {
 	local help_text="Usage: ${FUNCNAME[0]} [ARGS] [options]
 	Output: JSON (usefull to pick names out and recurse)
@@ -118,3 +124,4 @@ org-tree() {
 	tree='{"Id":"'"$root"'","Children":'"$tree"'}'
 	echo "$tree"
 }
+export -f org-tree
