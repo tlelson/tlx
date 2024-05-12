@@ -20,9 +20,9 @@ alias vpc-endpoint-services="aws ec2 --output json describe-vpc-endpoint-service
 	}' | jtbl -n "
 
 vpc-endpoint-approve-pending() {
-	aws --output json ec2 describe-vpc-endpoint-connections | jq -c '.VpcEndpointConnections[] |
-        select(.VpcEndpointState=="pendingAcceptance") |
-            {ServiceId, VpcEndpointId, VpcEndpointState, Tags}' >/tmp/dvec.json
+	connections=$(aws --output json ec2 describe-vpc-endpoint-connections | jq -c '
+	.VpcEndpointConnections[] | select(.VpcEndpointState=="pendingAcceptance") |
+		{ServiceId, VpcEndpointId, VpcEndpointState, Tags}')
 
 	# Loop through each line of the jq output
 	while IFS= read -r line; do
@@ -31,10 +31,11 @@ vpc-endpoint-approve-pending() {
 		vpc_endpoint_id=$(echo "$line" | jq -r '.VpcEndpointId')
 
 		# Print the extracted values
-		echo "Approving: ServiceId: $service_id, VpcEndpointId: $vpc_endpoint_id"
-		aws --output json ec2 accept-vpc-endpoint-connections --service-id "$service_id" \
-			--vpc-endpoint-ids "$vpc_endpoint_id" | jq
+		res=$(aws --output json ec2 accept-vpc-endpoint-connections \
+			--service-id "$service_id" \
+			--vpc-endpoint-ids "$vpc_endpoint_id" | jq -c)
+		echo "Approving: ServiceId: $service_id, VpcEndpointId: $vpc_endpoint_id - $res"
 
-	done </tmp/dvec.json
+	done <<<"$connections"
 }
 export -f vpc-endpoint-approve-pending

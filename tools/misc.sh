@@ -20,12 +20,12 @@ load-balancer() {
 	fi
 
 	if [ -z "$1" ]; then
-		echo "$help"
+		echo "$help_text"
 		return 1
 	fi
 	lb="$1"
 
-	aws --output json elbv2 describe-load-balancers --names "$lb" | jq '.LoadBalancers[]'
+	aws --output json elbv2 describe-load-balancers --names "$lb" | jq -c '.LoadBalancers[]'
 
 }
 export -f load-balancer

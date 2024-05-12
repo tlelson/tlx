@@ -72,9 +72,6 @@ stack-events() {
 		event_limit="$2"
 	fi
 
-	#aws --output json cloudformation describe-stack-events --stack-name "$1" \
-	#--max-items "${event_limit}" --query 'StackEvents[*].[LogicalResourceId, ResourceType, ResourceStatus, ResourceStatusReason]' --output table
-
 	aws --output json cloudformation describe-stack-events --stack-name "$1" \
 		--max-items "${event_limit}" | jq '.StackEvents | map({
 		ResourceType, LogicalResourceId, ResourceStatus, Timestamp, ResourceStatusReason })'
@@ -89,8 +86,8 @@ stack-failed() {
 	fi
 	stack_name="$1"
 
-	stack-events "$stack_name" 50 | jq '
-		.[] | select(.ResourceStatus|test(".*FAILED")) '
+	stack-events "$stack_name" 50 | jq '[
+		.[] | select(.ResourceStatus|test(".*FAILED")) ]'
 }
 export -f stack-failed
 
