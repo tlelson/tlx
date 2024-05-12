@@ -1,0 +1,101 @@
+#!/usr/bin/env python
+
+""" Org Tree
+    Returns JSON tree or the entire organisations including accounts, SCPs
+    and Organisation Units at each level.
+
+
+    TODO:
+        - Query AWS concurrently to improve speed
+        - Consider filtering AccountTypeDef to just account names and id
+        - Consider filtering SCPs to just names and id
+
+    Wild Dream:
+        - Is there a way of merging all SCP's for an account to get an applied
+            policy?
+        - if so, is it possible to do this and have a source policy for each
+            statement?
+"""
+
+
+from typing import TypedDict, List, Union
+import boto3
+import json
+import logging
+
+# python -m pip install 'boto3-stubs[essential]'
+# python -m pip install 'boto3-stubs[organizations]'
+from mypy_boto3_organizations.type_defs import (
+    OrganizationalUnitTypeDef,
+    AccountTypeDef,
+    PolicySummaryTypeDef,
+)
+from mypy_boto3_organizations.client import OrganizationsClient
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger()
+
+session = boto3.Session()
+org: OrganizationsClient = session.client('organizations')
+
+
+# Define a string literal for self-referencing type
+OrgUnitType = Union['OrgUnit', None]
+
+
+class OrgUnit(TypedDict):
+    Id: str
+    Name: str
+    Accounts: List[AccountTypeDef]
+    SCPs: List[PolicySummaryTypeDef]
+    OrgUnits: List[OrgUnitType]
+
+
+def scps(parent_id) -> List[PolicySummaryTypeDef]:
+    return org.list_policies_for_target(
+        TargetId=parent_id,
+        Filter='SERVICE_CONTROL_POLICY')["Policies"]
+
+
+def accounts(parent_id) -> List[AccountTypeDef]:
+    return org.list_accounts_for_parent(ParentId=parent_id)["Accounts"]
+
+
+def org_units(parent_id) -> List[OrganizationalUnitTypeDef]:
+    # paginate(org.list_organizational_units_for_parent, ParentId=parent_id)
+    return org.list_organizational_units_for_parent(
+        ParentId=parent_id)["OrganizationalUnits"]
+
+
+def build_unit(parent_id, name: str) -> OrgUnit:
+
+    # Recurse
+    ous = org_units(parent_id)
+    output_org_units: List[OrgUnitType] = []
+    for ou in ous:
+        if ("Id" not in ou) or ("Name" not in ou):
+            raise Exception("invalid OU: ", ou)
+        output_org_units.append(build_unit(
+            ou["Id"], ou["Name"]))
+
+    return OrgUnit(Id=parent_id,
+                   Name=name,
+                   Accounts=accounts(parent_id),
+                   SCPs=scps(parent_id),
+                   OrgUnits=output_org_units,
+                   )
+
+
+if __name__ == "__main__":
+    """
+    python org-tree | tee /tmp/org-tree.json | jq
+    """
+    tree: List[OrgUnit] = []
+
+    roots = org.list_roots()["Roots"]
+    for root in roots:
+        if ("Id" not in root) or ("Name" not in root):
+            raise Exception("invalid Root: ", root)
+        tree.append(build_unit(root["Id"], root["Name"]))
+
+    print(json.dumps(tree, default=str))
