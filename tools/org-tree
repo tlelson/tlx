@@ -6,7 +6,7 @@
 
 
     TODO:
-        - Query AWS concurrently to improve speed
+        - Query AWS concurrently to improve speed ✓
         - Consider filtering AccountTypeDef to just account names and id
         - Consider filtering SCPs to just names and id
 
@@ -18,6 +18,8 @@
 """
 
 
+from concurrent.futures import ThreadPoolExecutor as TPE
+import asyncio
 from typing import TypedDict, List, Union
 import boto3
 import json
@@ -62,40 +64,61 @@ def accounts(parent_id) -> List[AccountTypeDef]:
 
 
 def org_units(parent_id) -> List[OrganizationalUnitTypeDef]:
-    # paginate(org.list_organizational_units_for_parent, ParentId=parent_id)
     return org.list_organizational_units_for_parent(
         ParentId=parent_id)["OrganizationalUnits"]
 
 
-def build_unit(parent_id, name: str) -> OrgUnit:
+async def build_unit(executor: TPE, parent_id, name: str) -> OrgUnit:
+    # Fetch accounts and SCPs concurrently
+    loop = asyncio.get_event_loop()
+    acts_task = loop.run_in_executor(executor, accounts, parent_id)
+    scps_task = loop.run_in_executor(executor, scps, parent_id)
+    orgs_task = loop.run_in_executor(executor, org_units, parent_id)
 
-    # Recurse
-    ous = org_units(parent_id)
-    output_org_units: List[OrgUnitType] = []
-    for ou in ous:
-        if ("Id" not in ou) or ("Name" not in ou):
-            raise Exception("invalid OU: ", ou)
-        output_org_units.append(build_unit(
-            ou["Id"], ou["Name"]))
+    # Recursively build OrgUnit for each organizational unit
+    tasks = []
+    for ou in await orgs_task:
+        if "Id" not in ou or "Name" not in ou:
+            raise Exception("Invalid OU: ", ou)
+        task = build_unit(executor, ou["Id"], ou["Name"])
+        tasks.append(task)
 
-    return OrgUnit(Id=parent_id,
-                   Name=name,
-                   Accounts=accounts(parent_id),
-                   SCPs=scps(parent_id),
-                   OrgUnits=output_org_units,
-                   )
+    return {
+        "Id": parent_id,
+        "Name": name,
+        "Accounts": await acts_task,
+        "SCPs": await scps_task,
+        "OrgUnits": await asyncio.gather(*tasks),
+    }
+
+
+async def main(executor: TPE):
+    tree: List[OrgUnit] = []
+
+    roots = org.list_roots()["Roots"]
+    tasks = []
+
+    for root in roots:
+        if "Id" not in root or "Name" not in root:
+            raise Exception("Invalid Root: ", root)
+        task = build_unit(executor, root["Id"], root["Name"])
+        tasks.append(task)
+
+    # Gather all tasks and build the tree
+    tree = await asyncio.gather(*tasks)
+    print(json.dumps(tree, default=str))
 
 
 if __name__ == "__main__":
     """
-    python org-tree | tee /tmp/org-tree.json | jq
+    time python org-tree-async > /tmp/org-tree-async.json
+
+    Without ThreadPoolExecutor (i.e boto calls block)
+        real    0m55.824s ... this is no faster than the non-async version
+    With ThreadPoolExecutor (Doing Org syncronously tho)
+        real    0m19.565s
+    Now doing Org concurrently too
+        real    0m10.023s
     """
-    tree: List[OrgUnit] = []
 
-    roots = org.list_roots()["Roots"]
-    for root in roots:
-        if ("Id" not in root) or ("Name" not in root):
-            raise Exception("invalid Root: ", root)
-        tree.append(build_unit(root["Id"], root["Name"]))
-
-    print(json.dumps(tree, default=str))
+    asyncio.run(main(TPE(max_workers=10)))

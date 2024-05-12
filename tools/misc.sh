@@ -104,7 +104,10 @@ org-units() {
 }
 export -f org-units
 
-org-tree() {
+# Left here for reference.  Its a good example of building up a JSON object
+# in bash and other bash tricks.
+# It is however very slow.  The async python version is ~6 times faster.
+_org-tree() {
 	# TODO: Speed up (python? go?)
 	# Add accounts and SCPs to each org-unit
 
