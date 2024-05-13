@@ -34,7 +34,7 @@ from mypy_boto3_organizations.type_defs import (
 )
 from mypy_boto3_organizations.client import OrganizationsClient
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger()
 
 session = boto3.Session()
