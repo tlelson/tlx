@@ -127,4 +127,3 @@ _org-tree() {
 	tree='{"Id":"'"$root"'","Children":'"$tree"'}'
 	echo "$tree"
 }
-export -f org-tree
