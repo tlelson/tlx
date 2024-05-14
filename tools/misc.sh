@@ -60,13 +60,28 @@ load-balancer() {
 }
 export -f load-balancer
 
+alias eni='aws ec2 describe-network-interfaces --network-interface-ids '
+
 enis() {
-	# Use aws ec2 describe-network-interfaces --filters to get details. Its actually very
-	# good.
+	local help_text="Usage: ${FUNCNAME[0]} [options]
+	Lists ENI's in the current account. For more detail on a specific ENI use the aws cli
+	command. Its actually very good. See also '--filters'
+
+	aws ec2 describe-network-interfaces --network-interface-ids \"\$eniID\"
+
+	Options:
+	--help       Display this help message"
+
+	# Check if the '--help' flag is present
+	if [[ "$*" == *"--help"* ]]; then
+		echo "$help_text"
+		return 0 # Exit the function after printing help
+	fi
 
 	aws --output json ec2 describe-network-interfaces | tee /tmp/enis.json | jq '[.NetworkInterfaces[] |
 		{NetworkInterfaceId, InterfaceType, PrivateIpAddress,
-		PublicIP: (.. | .PublicIp?), Description,
+		PublicIP: [.. | .PublicIp?] | map(select(. != null)) | unique |.[0] ,
+		Description,
 		}] | sort_by(.PrivateIpAddress)
 	'
 }
