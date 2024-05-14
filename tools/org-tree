@@ -46,8 +46,9 @@ OrgUnitType = Union['OrgUnit', None]
 
 
 class OrgUnit(TypedDict):
-    Id: str
     Name: str
+    Id: str
+    Arn: str
     Accounts: List[AccountTypeDef]
     SCPs: List[PolicySummaryTypeDef]
     OrgUnits: List[OrgUnitType]
@@ -68,24 +69,35 @@ def org_units(parent_id) -> List[OrganizationalUnitTypeDef]:
         ParentId=parent_id)["OrganizationalUnits"]
 
 
-async def build_unit(executor: TPE, parent_id, name: str) -> OrgUnit:
+def _check_keys(parent):
+    if any(key not in parent for key in ("Id", "Name", "Arn")):
+        raise Exception("Invalid Parent: ", parent)
+
+
+async def build_unit(
+    executor: TPE,
+    parent: OrganizationalUnitTypeDef,
+) -> OrgUnit:
+    _check_keys(parent)
+
     # Fetch accounts and SCPs concurrently
     loop = asyncio.get_event_loop()
-    acts_task = loop.run_in_executor(executor, accounts, parent_id)
-    scps_task = loop.run_in_executor(executor, scps, parent_id)
-    orgs_task = loop.run_in_executor(executor, org_units, parent_id)
+    go = loop.run_in_executor
+    acts_task = go(executor, accounts, parent["Id"])  # type: ignore
+    scps_task = go(executor, scps, parent["Id"])  # type: ignore
+    orgs_task = go(executor, org_units, parent["Id"])  # type: ignore
 
     # Recursively build OrgUnit for each organizational unit
     tasks = []
     for ou in await orgs_task:
-        if "Id" not in ou or "Name" not in ou:
-            raise Exception("Invalid OU: ", ou)
-        task = build_unit(executor, ou["Id"], ou["Name"])
+        _check_keys(ou)
+        task = build_unit(executor, ou)
         tasks.append(task)
 
     return {
-        "Id": parent_id,
-        "Name": name,
+        "Name": parent["Name"],  # type: ignore
+        "Id": parent["Id"],  # type: ignore
+        "Arn": parent["Arn"],  # type: ignore
         "Accounts": await acts_task,
         "SCPs": await scps_task,
         "OrgUnits": await asyncio.gather(*tasks),
@@ -99,14 +111,12 @@ async def main(executor: TPE):
     tasks = []
 
     for root in roots:
-        if "Id" not in root or "Name" not in root:
-            raise Exception("Invalid Root: ", root)
-        task = build_unit(executor, root["Id"], root["Name"])
+        task = build_unit(executor, root)
         tasks.append(task)
 
     # Gather all tasks and build the tree
     tree = await asyncio.gather(*tasks)
-    print(json.dumps(tree, default=str))
+    print(json.dumps(tree, default=str, sort_keys=False))
 
 
 if __name__ == "__main__":

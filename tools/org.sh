@@ -56,7 +56,7 @@ org-units() {
 	fi
 
 	aws --output json organizations list-organizational-units-for-parent \
-		--query 'OrganizationalUnits[].{Id: Id, Name: Name}' \
+		--query 'OrganizationalUnits[]' \
 		--parent-id "$1"
 }
 export -f org-units
