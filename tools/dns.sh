@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-alias hosted-zones="aws --output json route53 list-hosted-zones | jq -r '.HostedZones[].Name' "
+alias hosted-zones="aws --output json route53 list-hosted-zones | jq -r '.HostedZones[] | {Id, Name}' "
+alias record-sets-full='aws --output json route53 list-resource-record-sets --hosted-zone-id '
 
 # TODO: Make this table-able
 record-sets() {
