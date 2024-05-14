@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
-alias code-pipelines="aws --output json codepipeline list-pipelines | jq -r '.pipelines[].name' "
-alias code-pipeline-get-state='aws --output json codepipeline get-pipeline-state --name '
+alias cp-list="aws --output json codepipeline list-pipelines | jq -r '.pipelines[].name' "
+alias cp-get-state='aws --output json codepipeline get-pipeline-state --name '
+alias cp-start='aws codepipeline start-pipeline-execution --name '
 
-code-pipeline-check() {
+cp-check() {
 
 	# TODO: For each executionId (at each stage, get the Source version of each)
 	# This is probably getting too complex for jq now.
@@ -66,9 +67,9 @@ code-pipeline-check() {
 		}
 	'
 }
-export -f code-pipeline-check
+export -f cp-check
 
-code-pipeline-approve() {
+cp-approve() {
 	if [ -z "$1" ]; then
 		echo "provide a pipeline name as the first argument, and optionally, the stage as a second argument.  If only one stage is approvable, it will be approved."
 		echo "e.g ${FUNCNAME[0]} 'meta' "
@@ -77,7 +78,7 @@ code-pipeline-approve() {
 	fi
 	pipeline_name="$1"
 	# TODO: Could do this more efficiently with aws cmd
-	pipeline=$(code-pipeline-check "${pipeline_name}")
+	pipeline=$(cp-check "${pipeline_name}")
 
 	stage_to_approve=""
 
@@ -113,9 +114,9 @@ code-pipeline-approve() {
 		--token "${token}"
 
 }
-export -f code-pipeline-approve
+export -f cp-approve
 
-code-pipeline-status() {
+cp-status() {
 	# Define the help text
 	local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
 
@@ -140,7 +141,7 @@ code-pipeline-status() {
 	{
 		echo "PIPELINE STATUS TIME"
 		aws --output json codepipeline list-pipelines | jq '.pipelines[].name' |
-			grep "${filter_pattern}" | xargs -P20 -n1 -I {} bash -c 'code-pipeline-check {}' |
+			grep "${filter_pattern}" | xargs -P20 -n1 -I {} bash -c 'cp-check {}' |
 			jq -c ' {
 	    	pipelineName, stages: [.stages |
 	    	if all(.status == "Succeeded") then
@@ -158,4 +159,33 @@ code-pipeline-status() {
 	} | column -t
 
 }
-export -f code-pipeline-status
+export -f cp-status
+
+cp-get() {
+	local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
+
+	Arguments:
+	pipeline_name
+
+	Options:
+	--help       Display this help message"
+
+	# Check if the '--help' flag is present
+	if [[ "$*" == *"--help"* ]]; then
+		echo "$help_text"
+		return 1
+	fi
+
+	if [ -z "$1" ]; then
+		echo "$help_text"
+		return 1
+	fi
+	pipeline_name="$1"
+
+	aws --output json codepipeline get-pipeline --name "${pipeline_name}" |
+		jq '{pipeline}' | json2yaml
+
+}
+export -f cp-get
+
+alias cp-update='aws codepipeline update-pipeline --cli-input-yaml file://'
