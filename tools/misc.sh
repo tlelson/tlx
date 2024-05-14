@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+alias watch='watch -n5 --exec bash -c ' # Need this to run these tools in watch
 alias aws-who-am-i='aws-list-accounts | grep "$(aws --output json sts get-caller-identity | jq -r "'".Account"'")"'
 
 alias security-groups="aws --output json ec2 describe-security-groups | jq -c '.SecurityGroups[] | {GroupId, GroupName, Description}'"
