@@ -5,15 +5,71 @@ alias cp-get-state='aws --output json codepipeline get-pipeline-state --name '
 alias cp-start='aws codepipeline start-pipeline-execution --name '
 
 cp-check() {
+	local help_text="Usage: ${FUNCNAME[0]} [options] [positional args]
+
+	Options:
+	-g/--guess		Guess the pipeline name from non-exact 'pipeline_name'
+	--help			Display this help message
+
+	Positional Arguments
+	pipeline_name		string matching one pipeline name. e.g 'meta'
+	"
 
 	# TODO: For each executionId (at each stage, get the Source version of each)
 	# This is probably getting too complex for jq now.
 
-	if [ -z "$1" ]; then
-		echo "${FUNCNAME[0]} \$pipeline_name "
+	local guess_name=0
+	local pipeline_name=""
+
+	# Check if no arguments are provided
+	if [[ $# -eq 0 ]]; then
+		echo "$help_text"
 		return 1
 	fi
-	pipeline_name="$1"
+
+	# Parse command line arguments
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+		-g | --guess)
+			guess_name=1
+			shift
+			;;
+		--help)
+			echo "$help_text"
+			return 0
+			;;
+		-*)
+			echo "Unknown option: $1"
+			echo "$help_text"
+			return 1
+			;;
+		*)
+			pipeline_name="$1"
+			shift
+			;;
+		esac
+	done
+
+	if ((guess_name == 1)); then
+		names=$(cp-list | grep "$pipeline_name")
+		count=$(wc -l <<<"$names")
+
+		if ((count == 0)); then
+			echo "could not find a pipeline containing pattern: $1"
+			return 1
+		fi
+
+		if ((count > 1)); then
+			echo "Ambiguous pipeline glob pattern: $1"
+			echo "Got $count matching pipelines: "
+			while IFS= read -r line; do
+				echo -e "\t$line"
+			done <<<"$names"
+			return 1
+		fi
+
+		pipeline_name="$names"
+	fi
 
 	aws --output json codepipeline get-pipeline-state \
 		--name "$pipeline_name" | jq '
@@ -129,7 +185,7 @@ cp-status() {
 	# Check if the '--help' flag is present
 	if [[ "$*" == *"--help"* ]]; then
 		echo "$help_text"
-		return 0 # Exit the function after printing help
+		return 0
 	fi
 
 	filter_pattern='"*"'
@@ -162,7 +218,7 @@ cp-status() {
 export -f cp-status
 
 cp-get() {
-	local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
+	local help_text="Usage: ${FUNCNAME[0]} [ARGS] [options]
 
 	Arguments:
 	pipeline_name
@@ -188,4 +244,26 @@ cp-get() {
 }
 export -f cp-get
 
-alias cp-update='aws codepipeline update-pipeline --cli-input-yaml file://'
+cp-update() {
+	local help_text="Usage: ${FUNCNAME[0]} [ARGS] [options]
+
+	Arguments:
+	file-path	Path to a yaml file that describes the pipeline to be updated. e.g /tmp/pipeline.yaml
+
+	Options:
+	--help       Display this help message"
+
+	# Check if the '--help' flag is present
+	if [[ "$*" == *"--help"* ]]; then
+		echo "$help_text"
+		return 1
+	fi
+
+	if [ -z "$1" ]; then
+		echo "$help_text"
+		return 1
+	fi
+
+	aws codepipeline update-pipeline --cli-input-yaml "file://$1" >/dev/null
+}
+export -f cp-update
