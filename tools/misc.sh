@@ -64,12 +64,11 @@ enis() {
 	# Use aws ec2 describe-network-interfaces --filters to get details. Its actually very
 	# good.
 
-	aws --output json ec2 describe-network-interfaces | jq '[.NetworkInterfaces[] |
-		{NetworkInterfaceId, Description, InterfaceType, PrivateIpAddress,
-		PublicIP: (.. | .PublicIp? // empty)
-		}]
+	aws --output json ec2 describe-network-interfaces | tee /tmp/enis.json | jq '[.NetworkInterfaces[] |
+		{NetworkInterfaceId, InterfaceType, PrivateIpAddress,
+		PublicIP: (.. | .PublicIp?), Description,
+		}] | sort_by(.PrivateIpAddress)
 	'
-
 }
 export -f enis
 
