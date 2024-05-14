@@ -72,3 +72,37 @@ enis() {
 
 }
 export -f enis
+
+nacls() {
+	local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
+	Normally we are looking NACLs to find why our traffic is blocked.  In this case supply
+	the subnet. If no subnet is provided a list of NACLs will be returned.
+
+	Optional Arguments:
+	subnet	subnet associations to filter by
+
+	Options:
+	--help       Display this help message"
+
+	# Check if the '--help' flag is present
+	if [[ "$*" == *"--help"* ]]; then
+		echo "$help_text"
+		return 0 # Exit the function after printing help
+	fi
+
+	if [ -n "$1" ]; then
+		aws --output json ec2 describe-network-acls \
+			--query 'NetworkAcls[].{Entries: Entries}' \
+			--filters "Name=association.subnet-id,Values=$1" | jq '[.[].Entries[] | {
+				CidrBlock, Egress, PortRange: "\(.PortRange.From) - \(.PortRange.To)", Protocol, RuleAction, RuleNumber
+			}] | sort_by(.RuleNumber)'
+	else
+		aws --output json ec2 describe-network-acls \
+			--query 'NetworkAcls[]' |
+			tee /tmp/dnacls.json | jq '[.[] | {
+                Name: (.Tags | map(select(.Key == "Name")) | .[0].Value),
+                VpcId, Subnets: [.Associations[].SubnetId],
+            }]'
+	fi
+}
+export -f nacls
