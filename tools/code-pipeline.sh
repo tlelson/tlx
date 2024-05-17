@@ -5,13 +5,17 @@ cp-list() {
 }
 export -f cp-list
 cp-get-state() {
-	aws --output json codepipeline get-pipeline-state --name
+	aws --output json codepipeline get-pipeline-state --name "$1"
 }
 export -f cp-get-state
 cp-start() {
-	aws codepipeline start-pipeline-execution --name
+	aws codepipeline start-pipeline-execution --name "$1"
 }
 
+# TODO:
+#	- Allow restricting to a single stage
+#	- Allow execution id as optional param to go back and see historical runs
+#	- Show Source commits of the execution at each stage
 cp-check() {
 	local help_text="Usage: ${FUNCNAME[0]} [options] [positional args]
 
