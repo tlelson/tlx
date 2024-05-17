@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 
-alias ecs-clusters="aws --output json ecs list-clusters | jq -r '.clusterArns[]'"
+ecs-clusters() {
+	aws --output json ecs list-clusters | jq -r '.clusterArns[]'
+}
+export -f ecs-clusters
 
 task-def() {
 	local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]

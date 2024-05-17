@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
 
-alias cp-list="aws --output json codepipeline list-pipelines | jq -r '.pipelines[].name' "
-alias cp-get-state='aws --output json codepipeline get-pipeline-state --name '
-alias cp-start='aws codepipeline start-pipeline-execution --name '
+cp-list() {
+	aws --output json codepipeline list-pipelines | jq -r '.pipelines[].name'
+}
+export -f cp-list
+cp-get-state() {
+	aws --output json codepipeline get-pipeline-state --name
+}
+export -f cp-get-state
+cp-start() {
+	aws codepipeline start-pipeline-execution --name
+}
 
 cp-check() {
 	local help_text="Usage: ${FUNCNAME[0]} [options] [positional args]
