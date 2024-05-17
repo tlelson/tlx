@@ -137,3 +137,5 @@ stack-template() {
 
 }
 export -f stack-template
+
+alias stack-delete='aws cloudformation delete-stack --stack-name '
