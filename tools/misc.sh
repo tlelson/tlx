@@ -13,7 +13,7 @@ security-group-rules() {
 	security-group-id	e.g sg-XXXX
 
 	Options:
-	--help       Display this help message"
+	--help			 Display this help message"
 
 	# Check if the '--help' flag is present
 	if [[ "$*" == *"--help"* ]]; then
@@ -42,7 +42,7 @@ load-balancer() {
 	loadbalancer_names	comma seperated list of load balancer names
 
 	Options:
-	--help       Display this help message"
+	--help			 Display this help message"
 
 	# Check if the '--help' flag is present
 	if [[ "$*" == *"--help"* ]]; then
@@ -71,7 +71,7 @@ enis() {
 	aws ec2 describe-network-interfaces --network-interface-ids \"\$eniID\"
 
 	Options:
-	--help       Display this help message"
+	--help			 Display this help message"
 
 	# Check if the '--help' flag is present
 	if [[ "$*" == *"--help"* ]]; then
@@ -79,7 +79,7 @@ enis() {
 		return 0 # Exit the function after printing help
 	fi
 
-	aws --output json ec2 describe-network-interfaces | tee /tmp/enis.json | jq '[.NetworkInterfaces[] |
+	aws --output json ec2 describe-network-interfaces | jq '[.NetworkInterfaces[] |
 		{NetworkInterfaceId, InterfaceType, PrivateIpAddress,
 		PublicIP: [.. | .PublicIp?] | map(select(. != null)) | unique |.[0] ,
 		Description,
@@ -97,7 +97,7 @@ nacls() {
 	subnet	subnet associations to filter by
 
 	Options:
-	--help       Display this help message"
+	--help			 Display this help message"
 
 	# Check if the '--help' flag is present
 	if [[ "$*" == *"--help"* ]]; then
@@ -113,11 +113,10 @@ nacls() {
 			}] | sort_by(.RuleNumber)'
 	else
 		aws --output json ec2 describe-network-acls \
-			--query 'NetworkAcls[]' |
-			tee /tmp/dnacls.json | jq '[.[] | {
-                Name: (.Tags | map(select(.Key == "Name")) | .[0].Value),
-                VpcId, Subnets: [.Associations[].SubnetId],
-            }]'
+			--query 'NetworkAcls[]' | jq '[.[] | {
+				Name: (.Tags | map(select(.Key == "Name")) | .[0].Value),
+				VpcId, Subnets: [.Associations[].SubnetId],
+			}]'
 	fi
 }
 export -f nacls
@@ -141,7 +140,7 @@ connectivity-test() {
 	testID		If provided, this will give details of the specific test
 
 	Options:
-	--help       Display this help message"
+	--help			 Display this help message"
 
 	# Check if the '--help' flag is present
 	if [[ "$*" == *"--help"* ]]; then
@@ -167,8 +166,9 @@ connectivity-test-runs() {
 		return 1
 	fi
 
-	aws --output json ec2 describe-network-insights-analyses --network-insights-path-id "$1" | tee /tmp/nia.json | jq -c '.NetworkInsightsAnalyses |
-		sort_by(.StartDate)| .[] |  {
+	aws --output json ec2 describe-network-insights-analyses \
+		--network-insights-path-id "$1" | jq -c '.NetworkInsightsAnalyses |
+		sort_by(.StartDate)| .[] | {
 		StartDate,
 		AnalysisId: .NetworkInsightsAnalysisId,
 		Status,
@@ -187,7 +187,7 @@ connectivity-test-run() {
 	testRunID	Use 'connectivity-test-runs' to find latest.
 
 	Options:
-	--help       Display this help message"
+	--help			 Display this help message"
 
 	# Check if the '--help' flag is present
 	if [[ "$*" == *"--help"* ]]; then
