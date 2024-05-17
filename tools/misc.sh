@@ -133,18 +133,32 @@ profile-resource-associations() {
 	aws route53profiles list-profile-resource-associations --profile-id "$1"
 }
 
-alias connectivity-tests="aws --output json ec2 describe-network-insights-paths | jq -rc '.NetworkInsightsPaths[] | {
-	Name: (.Tags | map(select(.Key == \"Name\")) | .[0].Value),
-	Id: .NetworkInsightsPathId,
-}'"
-
 connectivity-test() {
-	if [ -z "$1" ]; then
-		echo "Must provide a connectivity test ID as an argument"
-		return 1
+	local help_text="Usage: ${FUNCNAME[0]} [Optional Arguments]
+	If no argument is provided, a lists of existing connectivity tests is returned.
+
+	Optional Arguments
+	testID		If provided, this will give details of the specific test
+
+	Options:
+	--help       Display this help message"
+
+	# Check if the '--help' flag is present
+	if [[ "$*" == *"--help"* ]]; then
+		echo "$help_text"
+		return 0 # Exit the function after printing help
 	fi
-	aws ec2 describe-network-insights-paths \
-		--network-insights-path-ids "$1"
+	if [ -z "$1" ]; then
+		aws --output json ec2 describe-network-insights-paths | jq -rc '.NetworkInsightsPaths[] | {
+			Name: (.Tags | map(select(.Key == "Name")) | .[0].Value),
+			Id: .NetworkInsightsPathId,
+	}'
+	else
+		tid="$1"
+		aws --output json ec2 describe-network-insights-paths \
+			--network-insights-path-ids "$tid" | jq '
+					.NetworkInsightsPaths[0]'
+	fi
 }
 
 connectivity-test-runs() {
