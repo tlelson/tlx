@@ -139,3 +139,4 @@ stack-template() {
 export -f stack-template
 
 alias stack-delete='aws cloudformation delete-stack --stack-name '
+alias stack-resources='aws cloudformation list-stack-resources --stack-name '
