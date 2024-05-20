@@ -17,14 +17,17 @@ cp-start() {
 #	- Allow execution id as optional param to go back and see historical runs
 #	- Show Source commits of the execution at each stage
 cp-check() {
-	local help_text="Usage: ${FUNCNAME[0]} [options] [positional args]
+	local help_text="Usage: ${FUNCNAME[0]} [options] [positional Args] [Optional Args]
 
 	Options:
 	-g/--guess		Guess the pipeline name from non-exact 'pipeline_name'
 	--help			Display this help message
 
 	Positional Arguments
-	pipeline_name		string matching one pipeline name. e.g 'meta'
+	pipeline_name	string matching one pipeline name. e.g 'meta'
+
+	Optional Arguments
+	stage_name		StageName to restrict output to. e.g 'Dev'
 	"
 
 	# TODO: For each executionId (at each stage, get the Source version of each)
@@ -32,6 +35,7 @@ cp-check() {
 
 	local guess_name=0
 	local pipeline_name=""
+	local stage_name=""
 
 	# Check if no arguments are provided
 	if [[ $# -eq 0 ]]; then
@@ -56,7 +60,15 @@ cp-check() {
 			return 1
 			;;
 		*)
-			pipeline_name="$1"
+			if [[ -z "$pipeline_name" ]]; then
+				pipeline_name="$1"
+			elif [[ -z "$stage_name" ]]; then
+				stage_name="$1"
+			else
+				echo "Unexpected argument: $1"
+				echo "$help_text"
+				return 1
+			fi
 			shift
 			;;
 		esac
@@ -83,8 +95,8 @@ cp-check() {
 		pipeline_name="$names"
 	fi
 
-	aws --output json codepipeline get-pipeline-state \
-		--name "$pipeline_name" | jq '
+	result=$(aws --output json codepipeline get-pipeline-state \
+		--name "$pipeline_name" | tee /tmp/gps.json | jq '
 		{pipelineName, updated, stages: [
 			.stageStates[] | select(.latestExecution.status) |
 			if ( .stageName == "Source") and (.latestExecution.status == "Succeeded")  then
@@ -133,7 +145,15 @@ cp-check() {
 			end
 			]
 		}
-	'
+		')
+	# --arg stage_name "$stage_name"
+	if [ -z "$stage_name" ]; then
+		echo "$result" | jq
+	else
+		echo "$result" | jq "{pipelineName, updated,
+			stage: .stages[]| select(.stageName==\"$stage_name\")
+		}"
+	fi
 }
 export -f cp-check
 
