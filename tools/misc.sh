@@ -204,3 +204,32 @@ connectivity-test-run() {
 		--network-insights-path-id "$1" \
 		--network-insights-analysis-ids "$2"
 }
+
+iam-policy() {
+	local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
+	Without a policy ARN a list of IAM Policy Arns is returned. If an ARN is provided, the policy document of the latest version is returned.
+
+	Optional Arguments:
+	policyArn	ARN of the IAM role
+
+	Options:
+	--help			 Display this help message"
+
+	# Check if the '--help' flag is present
+	if [[ "$*" == *"--help"* ]]; then
+		echo "$help_text"
+		return 0 # Exit the function after printing help
+	fi
+
+	if [ -z "$1" ]; then
+		aws iam list-policies \
+			--query 'Policies[*].[Arn, DefaultVersionId]'
+	else
+		arn="$1"
+		versionId=$(aws --output json iam get-policy --policy-arn "$arn" \
+			--query 'Policy.DefaultVersionId' | jq -r)
+		aws --output json iam get-policy-version --policy-arn "$arn" \
+			--version-id "$versionId" --query 'PolicyVersion.Document' | jq
+	fi
+
+}
