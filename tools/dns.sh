@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-alias hosted-zones="aws --output json route53 list-hosted-zones | jq -cr '.HostedZones[] | {Id, Name}' "
+alias hosted-zones="aws --output json route53 list-hosted-zones | tee /tmp/hz.json | jq -cr '.HostedZones[] | {
+	Id, Name, Public: (.Config.PrivateZone | not), RecordSets: .ResourceRecordSetCount}' "
 alias record-sets-full='aws --output json route53 list-resource-record-sets --hosted-zone-id '
 
 # TODO: Make this table-able
