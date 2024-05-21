@@ -131,6 +131,7 @@ profile-resource-associations() {
 	fi
 	aws route53profiles list-profile-resource-associations --profile-id "$1"
 }
+export -f profile-resource-associations
 
 connectivity-test() {
 	local help_text="Usage: ${FUNCNAME[0]} [Optional Arguments]
@@ -159,6 +160,7 @@ connectivity-test() {
 					.NetworkInsightsPaths[0]'
 	fi
 }
+export -f connectivity-test
 
 connectivity-test-runs() {
 	if [ -z "$1" ]; then
@@ -175,6 +177,7 @@ connectivity-test-runs() {
 		NetworkPathFound,
 	}'
 }
+export -f connectivity-test-runs
 
 connectivity-test-run() {
 	local help_text="Usage: ${FUNCNAME[0]} [Arguments]
@@ -204,6 +207,12 @@ connectivity-test-run() {
 		--network-insights-path-id "$1" \
 		--network-insights-analysis-ids "$2"
 }
+export -f connectivity-test-run
+
+iam-roles() {
+	aws --output json iam list-roles | jq -r '.Roles[].Arn'
+}
+export -f iam-roles
 
 iam-policy() {
 	local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
@@ -231,5 +240,5 @@ iam-policy() {
 		aws --output json iam get-policy-version --policy-arn "$arn" \
 			--version-id "$versionId" --query 'PolicyVersion.Document' | jq
 	fi
-
 }
+export -f iam-policy
