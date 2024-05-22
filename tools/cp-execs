@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor as TPE
 import asyncio
 from typing import Generator, Dict
 import boto3
+from botocore import config
 import json
 import logging
 
@@ -22,25 +23,25 @@ logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger()
 
 session = boto3.Session()
-cp: CodePipelineClient = session.client('codepipeline')
 
-
-# class Execution(TypedDict):
-# ExecutionId: str
-# Status: str
-# # Source Revisions names are unknown
-# FinalStage: str
-# StageStatus: str
-# StartTime: str
+CONCURRENCY=20
+client_config = config.Config(
+    max_pool_connections=CONCURRENCY,
+)
+cp: CodePipelineClient = session.client('codepipeline', config=client_config)
 
 
 def raw_executions(pipeline_name: str) -> Generator[PES, None, None]:
+    """ Limit to last 50 executions
+    """
+    count = 0
     more = True
     lpe_args = {"pipelineName": pipeline_name, "maxResults": 10}
-    while more:
+    while more and (count<50):
         res: ListPipelineExecutionsOutputTypeDef = cp.list_pipeline_executions(
             **lpe_args)
         for execution in res["pipelineExecutionSummaries"]:
+            count +=1
             yield execution
         more = res.get("nextToken", False)
         lpe_args["nextToken"] = res.get("nextToken")
@@ -88,14 +89,25 @@ async def main(pipeline_name: str, executor: TPE):
         task = build_execution(pipeline_name, pes, executor)
         tasks.append(task)
 
-        # # Gather all tasks and build the tree
     # These are ordered, so the should be printed in order
     executions = await asyncio.gather(*tasks)
+
+    # Syncronous version
+    # executions = []
+    # for pes in raw_executions(pipeline_name):
+        # ex = await build_execution(pipeline_name, pes, executor)
+        # executions.append(ex)
+
     print(json.dumps(executions, default=str, sort_keys=False))
 
 
 if __name__ == "__main__":
     """
+    time ./cp-execs $meta | jtbl
+    real    0m27.874s (Syncronous)
+
+    real    0m15.277s (10 threads)
+    real    0m6.587s (25)
     """
 
     pipeline_name = sys.argv[1]
@@ -105,4 +117,4 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # main(pipeline_name, TPE(max_workers=10))
-    asyncio.run(main(pipeline_name, TPE(max_workers=10)))
+    asyncio.run(main(pipeline_name, TPE(max_workers=CONCURRENCY)))
