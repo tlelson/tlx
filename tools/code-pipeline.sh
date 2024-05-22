@@ -227,23 +227,14 @@ cp-status() {
 	fi
 
 	{
-		echo "PIPELINE STATUS TIME"
+		echo "PIPELINE STATUS LASTRUN"
 		aws --output json codepipeline list-pipelines | jq '.pipelines[].name' |
-			grep "${filter_pattern}" | xargs -P20 -n1 -I {} bash -c 'cp-check {}' |
-			jq -c ' {
-	    	pipelineName, stages: [.stages |
-	    	if all(.status == "Succeeded") then
-	    		.[-1] |
-	    			{status, time}
-	    	elif any(.status == "Failed") then
-	    		.[] | select(.status == "Failed") |
-	    			{status, time: .time?}
-	    	else
-	    		.[] | select(.status != "Succeeded") |
-	    			{status, time}
-	    	end
-	    ]  | .[0]
-	    }' | jq -rc '[.pipelineName, .stages.status, .stages.time?[:19] ] | @tsv'
+			grep "${filter_pattern}" | xargs -P20 -n1 -I {} sh -c 'aws --output json \
+					codepipeline list-pipeline-executions \
+					--pipeline-name "$1" --max-items 1 | jq -r --arg p "$1" \
+					'\''.pipelineExecutionSummaries[0] | [$p, .status, .startTime] |
+					.[2] |= sub(":[0-9]{2}\\.[0-9]{6}"; "")  | @tsv'\'' ' _ {}
+
 	} | column -t
 
 }
