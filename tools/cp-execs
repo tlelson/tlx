@@ -1,0 +1,108 @@
+#!/usr/bin/env python
+
+import sys
+from concurrent.futures import ThreadPoolExecutor as TPE
+import asyncio
+from typing import Generator, Dict
+import boto3
+import json
+import logging
+
+# python -m pip install -U 'boto3-stubs[essential]'
+# python -m pip install -U 'boto3-stubs[codepipeline]'
+from mypy_boto3_codepipeline.type_defs import (
+    ListPipelineExecutionsOutputTypeDef,
+    PipelineExecutionSummaryTypeDef as PES,
+    ActionExecutionFilterTypeDef as AEF,
+    ActionExecutionDetailTypeDef as ExecutionDetail,
+)
+from mypy_boto3_codepipeline.client import CodePipelineClient
+
+logging.basicConfig(level=logging.WARNING)
+logger = logging.getLogger()
+
+session = boto3.Session()
+cp: CodePipelineClient = session.client('codepipeline')
+
+
+# class Execution(TypedDict):
+# ExecutionId: str
+# Status: str
+# # Source Revisions names are unknown
+# FinalStage: str
+# StageStatus: str
+# StartTime: str
+
+
+def raw_executions(pipeline_name: str) -> Generator[PES, None, None]:
+    more = True
+    lpe_args = {"pipelineName": pipeline_name, "maxResults": 10}
+    while more:
+        res: ListPipelineExecutionsOutputTypeDef = cp.list_pipeline_executions(
+            **lpe_args)
+        for execution in res["pipelineExecutionSummaries"]:
+            yield execution
+        more = res.get("nextToken", False)
+        lpe_args["nextToken"] = res.get("nextToken")
+
+
+def execution_details(pipeline_name: str, execution_id: str) -> list[ExecutionDetail]:
+    filter: AEF = {"pipelineExecutionId": execution_id}
+    res = cp.list_action_executions(
+        # If there's more than 20 actions in a pipeline this will get the latest 20
+        pipelineName=pipeline_name, filter=filter, maxResults=20)
+
+    return res["actionExecutionDetails"]
+
+
+async def build_execution(pipeline_name: str, pes: PES, executor: TPE):
+    e: Dict[str, str | int | None] = {
+        "ExecutionId": pes.get("pipelineExecutionId"),
+        "Status": pes.get("status"),
+    }
+    for source in pes.get("sourceRevisions", []):
+        e[source["actionName"]] = source.get("revisionId", "")[:8]
+
+    # looks syncronous but needed to allow other threads in (TODO: verify this)
+    loop = asyncio.get_event_loop()
+    ed_task = loop.run_in_executor(
+        executor, execution_details, pipeline_name,
+        pes.get("pipelineExecutionId", ""))
+
+    eds = await ed_task
+
+    last_stage = eds[0]
+    e["Ver"] = last_stage.get("pipelineVersion")
+    e["FinalStage"] = last_stage.get("stageName")
+    # e["StageStatus"] = last_stage.get("status") # Not sure
+    e["StagesRan"] = len(eds)
+    if st := last_stage.get("startTime"):
+        e["StartTime"] = st.isoformat()
+    return e
+
+
+async def main(pipeline_name: str, executor: TPE):
+
+    tasks = []
+    for pes in raw_executions(pipeline_name):
+        task = build_execution(pipeline_name, pes, executor)
+        tasks.append(task)
+
+        # # Gather all tasks and build the tree
+    # These are ordered, so the should be printed in order
+    executions = await asyncio.gather(*tasks)
+    print(json.dumps(executions, default=str, sort_keys=False))
+
+
+if __name__ == "__main__":
+    """
+    """
+
+    pipeline_name = sys.argv[1]
+
+    if not pipeline_name:
+        logger.error("no pipeline_name provided ...")
+        sys.exit(1)
+
+    # main(pipeline_name, TPE(max_workers=10))
+    asyncio.run(main(pipeline_name, TPE(max_workers=10)))
