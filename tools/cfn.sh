@@ -109,11 +109,13 @@ export -f stack-params
 stack-status() {
 
 	stack_status=$(aws --output json cloudformation list-stacks |
-		jq -rc '.StackSummaries[] | [ .StackName[:60], .StackStatus] | @tsv' |
+		jq -rc '.StackSummaries[] | [ .StackName[:60], .StackStatus,
+			(.LastUpdatedTime // .CreationTime)
+			] | .[2] |= sub(":[0-9]{2}\\.[0-9]{6}"; "") | @tsv ' |
 		grep -v 'DELETE_COMPLETE')
 
 	{
-		echo "STACKNAME STATUS"
+		echo "STACKNAME STATUS UPDATED"
 		if [ "$#" -ne 0 ]; then
 			echo "$stack_status" | grep --color=auto "$*"
 		else
