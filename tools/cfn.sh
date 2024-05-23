@@ -142,3 +142,64 @@ export -f stack-template
 
 alias stack-delete='aws cloudformation delete-stack --stack-name '
 alias stack-resources='aws cloudformation list-stack-resources --stack-name '
+
+stack-deploy() {
+	local help_text="Usage: ${FUNCNAME[0]} [Arguments] [OPTIONAL_ARGS] [options]
+
+	Arguments:
+	stack_name
+	template_file
+
+	Optional Arguments:
+	parameters_file			Use 'stack-params' to produce
+
+	Options:
+	--help       Display this help message"
+
+	# Initialize variables
+	local stack_name=""
+	local template_file=""
+	local parameters_file=""
+
+	# Parse arguments
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+		--help)
+			echo "$help_text"
+			return 0
+			;;
+		*)
+			if [[ -z "$stack_name" ]]; then
+				stack_name="$1"
+			elif [[ -z "$template_file" ]]; then
+				template_file="$1"
+			elif [[ -z "$parameters_file" ]]; then
+				parameters_file="$1"
+			else
+				echo "Error: Unexpected argument '$1'"
+				echo "$help_text"
+				return 1
+			fi
+			shift
+			;;
+		esac
+	done
+
+	# Display help if requested or if required arguments are missing
+	if [[ -z "$stack_name" || -z "$template_file" ]]; then
+		echo "$help_text"
+		return 1
+	fi
+
+	if [[ -n "$parameters_file" ]]; then
+		aws cloudformation deploy \
+			--capabilities CAPABILITY_NAMED_IAM \
+			--parameter-overrides "file://${parameters_file}" \
+			--stack-name "${stack_name}" --template "${template_file}"
+	else
+		aws cloudformation deploy \
+			--capabilities CAPABILITY_NAMED_IAM \
+			--stack-name "${stack_name}" --template "${template_file}"
+	fi
+
+}
