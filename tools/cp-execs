@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys
+import argparse
 from concurrent.futures import ThreadPoolExecutor as TPE
 import asyncio
 from typing import Generator, Dict
@@ -24,97 +24,96 @@ logger = logging.getLogger()
 
 session = boto3.Session()
 
-CONCURRENCY=20
-client_config = config.Config(
-    max_pool_connections=CONCURRENCY,
-)
-cp: CodePipelineClient = session.client('codepipeline', config=client_config)
 
-
-def raw_executions(pipeline_name: str) -> Generator[PES, None, None]:
-    """ Limit to last 50 executions
+def raw_executions(cp: CodePipelineClient, pipeline_name: str, count) -> Generator[PES, None, None]:
+    """ Returns latest `count` executions.
     """
-    count = 0
+    i = 0
     more = True
     lpe_args = {"pipelineName": pipeline_name, "maxResults": 10}
-    while more and (count<50):
+    while more and (i<count):
         res: ListPipelineExecutionsOutputTypeDef = cp.list_pipeline_executions(
             **lpe_args)
         for execution in res["pipelineExecutionSummaries"]:
-            count +=1
+            i +=1
             yield execution
         more = res.get("nextToken", False)
         lpe_args["nextToken"] = res.get("nextToken")
 
 
-def execution_details(pipeline_name: str, execution_id: str) -> list[ExecutionDetail]:
+def execution_details(cp: CodePipelineClient, pipeline_name: str, execution_id: str) -> list[ExecutionDetail]:
     filter: AEF = {"pipelineExecutionId": execution_id}
     res = cp.list_action_executions(
-        # If there's more than 20 actions in a pipeline this will get the latest 20
-        pipelineName=pipeline_name, filter=filter, maxResults=20)
+        pipelineName=pipeline_name, filter=filter)
 
     return res["actionExecutionDetails"]
 
 
-async def build_execution(pipeline_name: str, pes: PES, executor: TPE):
-    e: Dict[str, str | int | None] = {
-        "ExecutionId": pes.get("pipelineExecutionId"),
-        "Status": pes.get("status"),
-    }
-    for source in pes.get("sourceRevisions", []):
-        e[source["actionName"]] = source.get("revisionId", "")[:8]
+class ExecutionSummary:
+    def __init__(self, pipeline_name, count=10, concurrency=10) -> None:
+        self._pipeline_name = pipeline_name
+        self._count = count
+        self._executor = TPE(max_workers=concurrency)
+        self._cp: CodePipelineClient = session.client('codepipeline', config=config.Config(
+            max_pool_connections=concurrency,
+        ))
 
-    # looks syncronous but needed to allow other threads in (TODO: verify this)
-    loop = asyncio.get_event_loop()
-    ed_task = loop.run_in_executor(
-        executor, execution_details, pipeline_name,
-        pes.get("pipelineExecutionId", ""))
+    def run(self):
+        return asyncio.run(self._compile())
 
-    eds = await ed_task
+    async def _compile(self):
 
-    last_stage = eds[0]
-    e["Ver"] = last_stage.get("pipelineVersion")
-    e["FinalStage"] = last_stage.get("stageName")
-    # e["StageStatus"] = last_stage.get("status") # Not sure
-    e["StagesRan"] = len(eds)
-    if st := last_stage.get("startTime"):
-        e["StartTime"] = st.isoformat()
-    return e
+        tasks = []
+        for pes in raw_executions(self._cp, self._pipeline_name, self._count):
+            task = self._build_execution(pes)
+            tasks.append(task)
 
+        # These are ordered, so the should be printed in order
+        return await asyncio.gather(*tasks)
 
-async def main(pipeline_name: str, executor: TPE):
+    async def _build_execution(self, pes: PES) -> Dict[str, str | int | None]:
+        e: Dict[str, str | int | None] = {
+            "StartTime": "",
+            "Ver": "",
+            "StagesRan": 0,
+            "FinalStage": "",
+            "Status": pes.get("status"),
+        }
+        for source in pes.get("sourceRevisions", []):
+            e[source["actionName"]] = source.get("revisionId", "")[:8]
 
-    tasks = []
-    for pes in raw_executions(pipeline_name):
-        task = build_execution(pipeline_name, pes, executor)
-        tasks.append(task)
+        # looks syncronous but needed to allow other threads running the same command for a
+        # different execution.
+        loop = asyncio.get_event_loop()
+        ed_task = loop.run_in_executor( self._executor,
+            execution_details, self._cp, self._pipeline_name,
+            pes.get("pipelineExecutionId", ""))
 
-    # These are ordered, so the should be printed in order
-    executions = await asyncio.gather(*tasks)
+        eds = await ed_task
+        e["StagesRan"] = len(eds)
 
-    # Syncronous version
-    # executions = []
-    # for pes in raw_executions(pipeline_name):
-        # ex = await build_execution(pipeline_name, pes, executor)
-        # executions.append(ex)
+        last_stage = eds[0]
+        del eds  # only need the last_stage now
 
-    print(json.dumps(executions, default=str, sort_keys=False))
+        e["Ver"] = last_stage.get("pipelineVersion")
+        e["FinalStage"] = last_stage.get("stageName")
+        # e["StageStatus"] = last_stage.get("status") # Not sure. Sometimes different to Status.
+        if st := last_stage.get("startTime"):
+            e["StartTime"] = st.isoformat(timespec='minutes')
 
+        e["ExecutionId"] = pes.get("pipelineExecutionId")
+        return e
 
 if __name__ == "__main__":
-    """
-    time ./cp-execs $meta | jtbl
-    real    0m27.874s (Syncronous)
+    # Initialize the parser
+    parser = argparse.ArgumentParser(
+        description="List Codepipeline past executions in reverse cronological order")
+    parser.add_argument('pipeline_name', type=str, help='Name of the pipeline.')
+    parser.add_argument('count', type=int, nargs='?', default=10,
+                        help='Optional count parameter (default is 10).')
+    # Parse the arguments
+    args = parser.parse_args()
 
-    real    0m15.277s (10 threads)
-    real    0m6.587s (25)
-    """
-
-    pipeline_name = sys.argv[1]
-
-    if not pipeline_name:
-        logger.error("no pipeline_name provided ...")
-        sys.exit(1)
-
-    # main(pipeline_name, TPE(max_workers=10))
-    asyncio.run(main(pipeline_name, TPE(max_workers=CONCURRENCY)))
+    e = ExecutionSummary(args.pipeline_name, args.count)
+    executions = e.run()
+    print(json.dumps(executions, default=str, sort_keys=False))
