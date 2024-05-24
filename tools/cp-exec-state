@@ -1,0 +1,151 @@
+#!/usr/bin/env python
+
+import argparse
+import boto3
+from typing import TypedDict, Optional
+import json
+import json
+import logging
+from datetime import datetime
+from collections import defaultdict
+
+from mypy_boto3_codepipeline.type_defs import (
+    ActionExecutionFilterTypeDef as AEF,
+    ActionExecutionDetailTypeDef as ExecutionDetail,
+    ListPipelineExecutionsOutputTypeDef,
+)
+from mypy_boto3_codepipeline.client import CodePipelineClient
+
+logging.basicConfig(level=logging.WARNING)
+logger = logging.getLogger()
+
+session = boto3.Session()
+cp: CodePipelineClient = session.client('codepipeline')
+
+
+def _json_default(obj):
+    if isinstance(obj, datetime):
+        return obj.isoformat(timespec='minute')
+    return str(obj)
+
+
+class latestExecution(TypedDict):
+    status: str
+    lastStatusChange: Optional[datetime]
+
+class Revision(TypedDict):
+    revisionId: str
+
+class Action(TypedDict):
+    actionName: str
+    latestExecution: latestExecution
+
+class SourceAction(Action):
+    currentRevision: Revision
+
+class Stage(TypedDict):
+    stageName: str
+    actionStates: list[Action]
+    latestExecution: latestExecution
+
+# def new_stage()-> Stage:
+    # return Stage(stageName="", actionStates=[], latestExecution=latestExecution(status=""))
+
+class State(TypedDict):
+    pipelineName: str
+    pipelineVersion: int
+    stageStates: list[Stage]
+    # I'd need to query the version for this i think
+    # created: str
+    # updated: str
+    # NOT IN get-pipeline-state
+    executionId: str
+
+def execution_details(pipeline_name: str, execution_id: str) -> list[ExecutionDetail]:
+    filter: AEF = {"pipelineExecutionId": execution_id}
+    res = cp.list_action_executions(
+        pipelineName=pipeline_name, filter=filter)
+
+    return res["actionExecutionDetails"]
+
+def _group_actions_by_stages(actions) -> tuple[dict[str, list], int]:
+    """returns actions grouped by stage and the pipeline version number"""
+
+    pipeline_version=0
+    stages = defaultdict(list)
+    for a in reversed(actions): # Its in reverse chronological order
+        if pv := a.get("pipeline_version", 0) > pipeline_version:
+            pipeline_version = pv
+
+        stage_name = a.get("stageName")
+        if not stage_name:
+            raise Exception("missing stageName")
+        # a[""]
+
+        # Has no revision anyway
+        # if a.get("input", {}).get("actionTypeId", {}).get("category") is "Source":
+            # action = SourceAction()
+
+        action = Action(
+            actionName=a.get("actionName", ""),
+            latestExecution={"status": a.get("status", ""),
+                             "lastStatusChange": a.get("lastUpdateTime")})
+        # action[""]
+        stages[stage_name].append(action)
+    return stages, pipeline_version
+
+
+def get_state(pipeline_name, execution_id: str) -> State:
+    # 1. Get executions actions
+    # 2. build it into the above format
+
+    stage_actions = execution_details(pipeline_name, execution_id)
+
+    # we can get this from any action it must be the same for a single executionId
+    # pipelineVersion = 0
+
+    stages, pv = _group_actions_by_stages(stage_actions)
+
+    stageStates: list[Stage] = []
+    for name, stage_actions in stages.items():
+        s = Stage(stageName=name, actionStates=stage_actions,
+                  latestExecution=stage_actions[-1]["latestExecution"])
+        stageStates.append(s)
+
+    state = State(pipelineName=pipeline_name, pipelineVersion=pv,
+                 stageStates=stageStates, executionId=execution_id)
+    # state["pipelineVersion"] = action["pipelineVersion"]
+
+    return state
+
+def _latest_execution(pipeline_name) -> str:
+    lpe_args = {"pipelineName": pipeline_name, "maxResults": 1}
+    res: ListPipelineExecutionsOutputTypeDef = cp.list_pipeline_executions(**lpe_args)
+    return res["pipelineExecutionSummaries"][0].get("execution_id", "NOTFOUND")
+
+if __name__ == "__main__":
+    """
+    aws-shell os-cards-build
+    p=os-cards-meta-pipeline
+    exID=576dcc4b-bcf3-4532-ad2c-90f396eff8af
+    ./cp-state $p $exID | tee /tmp/cp-state.json | jq
+    """
+
+
+    # Initialize the parser
+    parser = argparse.ArgumentParser(
+        description="Show Codepipeline state.")
+    parser.add_argument('pipeline_name', type=str, help='Name of the pipeline.')
+    parser.add_argument('execution_id', type=str, nargs='?',
+                        help='Optional. If not provided the latest will be used.')
+    # Parse the arguments
+    args = parser.parse_args()
+
+    execution_id = args.execution_id
+    if not args.execution_id:
+        execution_id = _latest_execution(args.pipeline_name)
+
+    state = get_state(args.pipeline_name, execution_id)
+
+    # TODO: JSON parser to use isoformat(timspec='minute')
+    print(json.dumps(state, default=_json_default, sort_keys=False))
