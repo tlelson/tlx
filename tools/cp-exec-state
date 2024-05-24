@@ -68,11 +68,11 @@ def execution_details(pipeline_name: str, execution_id: str) -> list[ExecutionDe
 
     return res["actionExecutionDetails"]
 
-def _group_actions_by_stages(actions) -> tuple[dict[str, list], int]:
+def _group_actions_by_stages(actions) -> tuple[dict[str, list[Action]], int]:
     """returns actions grouped by stage and the pipeline version number"""
 
     pipeline_version=0
-    stages = defaultdict(list)
+    stages = defaultdict(list[Action])
     for a in reversed(actions): # Its in reverse chronological order
         if pv := a.get("pipeline_version", 0) > pipeline_version:
             pipeline_version = pv
@@ -96,25 +96,29 @@ def _group_actions_by_stages(actions) -> tuple[dict[str, list], int]:
 
 
 def get_state(pipeline_name, execution_id: str) -> State:
-    # 1. Get executions actions
-    # 2. build it into the above format
-
     stage_actions = execution_details(pipeline_name, execution_id)
-
-    # we can get this from any action it must be the same for a single executionId
-    # pipelineVersion = 0
 
     stages, pv = _group_actions_by_stages(stage_actions)
 
     stageStates: list[Stage] = []
     for name, stage_actions in stages.items():
-        s = Stage(stageName=name, actionStates=stage_actions,
-                  latestExecution=stage_actions[-1]["latestExecution"])
+        le = stage_actions[-1]["latestExecution"]
+
+        ss = set(action.get("latestExecution", {}).get("status")
+            for action in stage_actions)
+
+        if "Failed" in ss:
+            le["status"] = "Failed"
+        elif "InProgress" in ss:
+            le["status"] = "InProgress"
+        else:
+            le["status"] = "Success"
+
+        s = Stage(stageName=name, actionStates=stage_actions, latestExecution=le)
         stageStates.append(s)
 
     state = State(pipelineName=pipeline_name, pipelineVersion=pv,
-                 stageStates=stageStates, executionId=execution_id)
-    # state["pipelineVersion"] = action["pipelineVersion"]
+                  stageStates=stageStates, executionId=execution_id)
 
     return state
 
@@ -146,6 +150,4 @@ if __name__ == "__main__":
         execution_id = _latest_execution(args.pipeline_name)
 
     state = get_state(args.pipeline_name, execution_id)
-
-    # TODO: JSON parser to use isoformat(timspec='minute')
     print(json.dumps(state, default=_json_default, sort_keys=False))
