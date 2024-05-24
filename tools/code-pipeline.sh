@@ -4,23 +4,20 @@ cp-list() {
 	aws --output json codepipeline list-pipelines | jq -r '.pipelines[].name'
 }
 export -f cp-list
-cp-get-state() {
-	aws --output json codepipeline get-pipeline-state --name "$1"
-}
-export -f cp-get-state
 cp-start() {
 	aws codepipeline start-pipeline-execution --name "$1"
 }
 
 # TODO:
-#	- Allow restricting to a single stage
-#	- Allow execution id as optional param to go back and see historical runs
+#	- Allow no arguments for all pipelines and their status (change to cp-status)
 #	- Show Source commits of the execution at each stage
-cp-check() {
+cp-state() {
 	local help_text="Usage: ${FUNCNAME[0]} [options] [positional Args] [Optional Args]
+	Summarised current state of the specified pipeline.
 
 	Options:
 	-g/--guess		Guess the pipeline name from non-exact 'pipeline_name'
+	-f/--full		Full state. Not summarised.
 	--help			Display this help message
 
 	Positional Arguments
@@ -33,6 +30,7 @@ cp-check() {
 	# TODO: For each executionId (at each stage, get the Source version of each)
 	# This is probably getting too complex for jq now.
 
+	local full=0
 	local guess_name=0
 	local pipeline_name=""
 	local stage_name=""
@@ -46,6 +44,10 @@ cp-check() {
 	# Parse command line arguments
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
+		-f | --full)
+			full=1
+			shift
+			;;
 		-g | --guess)
 			guess_name=1
 			shift
@@ -95,8 +97,13 @@ cp-check() {
 		pipeline_name="$names"
 	fi
 
-	result=$(aws --output json codepipeline get-pipeline-state \
-		--name "$pipeline_name" | tee /tmp/gps.json | jq '
+	state=$(aws --output json codepipeline get-pipeline-state --name "$pipeline_name")
+
+	if [ -n "$full" ]; then
+		echo "${state}" | jq
+	fi
+
+	result=$(echo "${state}" | jq '
 		{pipelineName, updated, stages: [
 			.stageStates[] | select(.latestExecution.status) |
 			if ( .stageName == "Source") and (.latestExecution.status == "Succeeded")  then
@@ -155,7 +162,7 @@ cp-check() {
 		}"
 	fi
 }
-export -f cp-check
+export -f cp-state
 
 cp-approve() {
 	if [ -z "$1" ]; then
@@ -212,7 +219,7 @@ cp-status() {
 	pipeline_name_filter	grep regex to filter pipelines
 
 	Options:
-	--help       Display this help message"
+	--help					Display this help message"
 
 	# Check if the '--help' flag is present
 	if [[ "$*" == *"--help"* ]]; then
@@ -240,14 +247,17 @@ cp-status() {
 }
 export -f cp-status
 
-cp-get() {
-	local help_text="Usage: ${FUNCNAME[0]} [ARGS] [options]
+cp-definition() {
+	local help_text="Usage: ${FUNCNAME[0]} [Arguments] [Optional Arguments] [options]
 
 	Arguments:
 	pipeline_name
 
+	Optional Arguments:
+	version			Default: current version. See execution list for version tags.
+
 	Options:
-	--help       Display this help message"
+	--help			Display this help message"
 
 	# Check if the '--help' flag is present
 	if [[ "$*" == *"--help"* ]]; then
@@ -259,13 +269,16 @@ cp-get() {
 		echo "$help_text"
 		return 1
 	fi
-	pipeline_name="$1"
+	cmd="aws --output json codepipeline get-pipeline --name $1"
 
-	aws --output json codepipeline get-pipeline --name "${pipeline_name}" |
-		jq '{pipeline}' | json2yaml
+	if [ -n "$2" ]; then
+		cmd="$cmd --pipeline-version $2"
+	fi
+
+	eval "$cmd" | jq '{pipeline}'
 
 }
-export -f cp-get
+export -f cp-definition
 
 cp-update() {
 	local help_text="Usage: ${FUNCNAME[0]} [ARGS] [options]
@@ -274,7 +287,7 @@ cp-update() {
 	file-path	Path to a yaml file that describes the pipeline to be updated. e.g /tmp/pipeline.yaml
 
 	Options:
-	--help       Display this help message"
+	--help		 Display this help message"
 
 	# Check if the '--help' flag is present
 	if [[ "$*" == *"--help"* ]]; then
