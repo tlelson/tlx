@@ -7,6 +7,7 @@ export -f cp-list
 cp-start() {
 	aws codepipeline start-pipeline-execution --name "$1"
 }
+export -f cp-start
 
 # TODO:
 #   - Allow no arguments for all pipelines and their status (change to cp-status)

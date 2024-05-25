@@ -67,13 +67,14 @@ Usage: cp-status [OPTIONAL_ARGS] [options]
         --help                  Display this help message
 ```
 
-- `codebuild-logs`: streams codebuild logs to the terminal. Needs log group and optional time.
 - `aws-list-accounts`: list the accounts in your `.aws/config`
-- `pipeline-check`: returns json view of a codepipeline.
-- `pipeline-status`: optional arg to filter pipeline name
-- `stack-delete`: aggressively delete a stack. Be carefull. This will delete non-empty buckets. Non-empty ECR repos and remove log groups regardless of their retention policies.
+- `cp-state`: current state of a code-pipeline
+- `cp-status`: status of all code-pipelines with optional arg to filter name
+- `stack-status`: lists all cloudformation stacks and their status. Provide filter expression to reduce the output.
+- `stack-delete`: delete a stack using the cloudformation command.
+- `stack-delete-force`: aggressively delete a stack. Be careful. This will delete non-empty buckets. Non-empty ECR repos and remove log groups regardless of their retention policies.
 - `stack-events`: defaults to last 10 but provide a number to go back more/less
-- `stack-status`: lists all cloudformation stacks and their status. provide filter expression to reduce the output
+- `cfn-resources`: list all resources deployed by cloudformation in any stack.
 
 
 ## Module Summary
