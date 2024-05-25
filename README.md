@@ -57,16 +57,14 @@ Otherwise source the `.tools/alias` in your own way.
 Most have an example usages if no args are given. e.g
 
 ```bash
-$ codebuild-logs
-Returns the logs since a certain time
-Usage:
-         codebuild-logs.sh <build_id>, <start_time_iso>
-Ex:
-    codebuild-logs.sh 'storybook-build' # (default: last hour)
-Ex:
-    codebuild-logs.sh 'storybook-build' '30 min ago'
-Ex:
-    codebuild-logs.sh 'storybook-build' '2023-12-19T17:40:31.611000+11:00'
+$ cp-status --help
+Usage: cp-status [OPTIONAL_ARGS] [options]
+
+        Optional Arguments:
+        pipeline_name_filter    grep regex to filter pipelines
+
+        Options:
+        --help                  Display this help message
 ```
 
 - `codebuild-logs`: streams codebuild logs to the terminal. Needs log group and optional time.

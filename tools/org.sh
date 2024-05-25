@@ -6,11 +6,11 @@ alias roots="aws organizations list-roots"
 scps() {
 	local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
 
-	Optional Arguments:
-	target-id	Root, OU or Account id to filter by
+    Optional Arguments:
+    target-id   Root, OU or Account id to filter by
 
-	Options:
-	--help       Display this help message"
+    Options:
+    --help       Display this help message"
 
 	# Check if the '--help' flag is present
 	if [[ "$*" == *"--help"* ]]; then
@@ -21,13 +21,13 @@ scps() {
 	if [ -z "$1" ]; then
 		aws --output json organizations list-policies \
 			--query 'Policies[].{Id: Id, Name: Name, Description: Description,
-				AwsManaged: AwsManaged}' \
+                AwsManaged: AwsManaged}' \
 			--filter 'SERVICE_CONTROL_POLICY' | jtbl
 	else
 		aws --output json organizations list-policies-for-target \
 			--target-id "$1" \
 			--query 'Policies[].{Id: Id, Name: Name, Description: Description,
-				AwsManaged: AwsManaged}' \
+                AwsManaged: AwsManaged}' \
 			--filter 'SERVICE_CONTROL_POLICY' | jtbl
 	fi
 
@@ -36,13 +36,13 @@ export -f scps
 
 org-units() {
 	local help_text="Usage: ${FUNCNAME[0]} [ARGS] [options]
-	Output: JSON (usefull to pick names out and recurse)
+    Output: JSON (usefull to pick names out and recurse)
 
-	Arguments:
-	target-id	Root OU. (use 'roots' to list)
+    Arguments:
+    target-id   Root OU. (use 'roots' to list)
 
-	Options:
-	--help       Display this help message"
+    Options:
+    --help       Display this help message"
 
 	# Check if the '--help' flag is present
 	if [[ "$*" == *"--help"* ]]; then

@@ -9,8 +9,8 @@ cfn-exports() {
 	# This returns all cfn exports.  It takes an optional argument that filters
 	# by glob pattern
 	# E.g:
-	#	cfn-exports | jtbl -n
-	#	cfn-exports 'subnet'
+	#   cfn-exports | jtbl -n
+	#   cfn-exports 'subnet'
 
 	exports=$(aws --output json cloudformation list-exports)
 
@@ -26,12 +26,13 @@ cfn-exports() {
 }
 export -f cfn-exports
 
+# TODO: Speedup
 cfn-resources() {
 	# This returns all resources deployed by all cfn stacks.  It takes an optional argument
 	# that defines the level of concurrency.
 	# E.g:
-	#	cfn-resources			# Uses 32 concurrent processes
-	#	cfn-resources 4			# Uses  4 concurrent processes
+	#   cfn-resources           # Uses 32 concurrent processes
+	#   cfn-resources 4         # Uses  4 concurrent processes
 
 	concurrency=32
 
@@ -74,7 +75,7 @@ stack-events() {
 
 	aws --output json cloudformation describe-stack-events --stack-name "$1" \
 		--max-items "${event_limit}" | jq '.StackEvents | map({
-		ResourceType, LogicalResourceId, ResourceStatus, Timestamp, ResourceStatusReason })'
+        ResourceType, LogicalResourceId, ResourceStatus, Timestamp, ResourceStatusReason })'
 
 }
 export -f stack-events
@@ -87,7 +88,7 @@ stack-failed() {
 	stack_name="$1"
 
 	stack-events "$stack_name" 50 | jq '[
-		.[] | select(.ResourceStatus|test(".*FAILED")) ]'
+        .[] | select(.ResourceStatus|test(".*FAILED")) ]'
 }
 export -f stack-failed
 
@@ -110,8 +111,8 @@ stack-status() {
 
 	stack_status=$(aws --output json cloudformation list-stacks |
 		jq -rc '.StackSummaries[] | [ .StackName[:60], .StackStatus,
-			(.LastUpdatedTime // .CreationTime)
-			] | .[2] |= sub(":[0-9]{2}\\.[0-9]{6}"; "") | @tsv ' |
+            (.LastUpdatedTime // .CreationTime)
+            ] | .[2] |= sub(":[0-9]{2}\\.[0-9]{6}"; "") | @tsv ' |
 		grep -v 'DELETE_COMPLETE')
 
 	{
@@ -146,15 +147,15 @@ alias stack-resources='aws cloudformation list-stack-resources --stack-name '
 stack-deploy() {
 	local help_text="Usage: ${FUNCNAME[0]} [Arguments] [OPTIONAL_ARGS] [options]
 
-	Arguments:
-	stack_name
-	template_file
+    Arguments:
+    stack_name
+    template_file
 
-	Optional Arguments:
-	parameters_file			Use 'stack-params' to produce
+    Optional Arguments:
+    parameters_file         Use 'stack-params' to produce
 
-	Options:
-	--help       Display this help message"
+    Options:
+    --help       Display this help message"
 
 	# Initialize variables
 	local stack_name=""

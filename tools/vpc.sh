@@ -1,28 +1,28 @@
 #!/usr/bin/env bash
 
 alias vpc-endpoint-connections="aws --output json ec2 describe-vpc-endpoint-connections | jq -c '
-	.VpcEndpointConnections[] | {
-	ServiceId, VpcEndpointId, VpcEndpointState,
-	Name: (.Tags | map(select(.Key == \"Name\")) | .[0].Value)
+    .VpcEndpointConnections[] | {
+    ServiceId, VpcEndpointId, VpcEndpointState,
+    Name: (.Tags | map(select(.Key == \"Name\")) | .[0].Value)
 }'"
 
 alias vpc-endpoints="aws --output json ec2 describe-vpc-endpoints | jq -c '.VpcEndpoints[] |
-	{
-		VpcEndpointId, VpcEndpointType, VpcId, ServiceName, State,
-		Name: (.Tags | map(select(.Key == \"Name\")) | .[0].Value)
-	}' | jtbl -n"
+    {
+        VpcEndpointId, VpcEndpointType, VpcId, ServiceName, State,
+        Name: (.Tags | map(select(.Key == \"Name\")) | .[0].Value)
+    }' | jtbl -n"
 
 alias vpc-endpoint-services="aws ec2 --output json describe-vpc-endpoint-services | jq -c '
-	.ServiceDetails[] | {
-		ServiceId, ServiceType: .ServiceType[].ServiceType,
-		PrivateDnsName,
-		Name: (.Tags | map(select(.Key == \"Name\")) | .[0].Value),
-	}' | jtbl -n "
+    .ServiceDetails[] | {
+        ServiceId, ServiceType: .ServiceType[].ServiceType,
+        PrivateDnsName,
+        Name: (.Tags | map(select(.Key == \"Name\")) | .[0].Value),
+    }' | jtbl -n "
 
 vpc-endpoint-approve-pending() {
 	connections=$(aws --output json ec2 describe-vpc-endpoint-connections | jq -c '
-	.VpcEndpointConnections[] | select(.VpcEndpointState=="pendingAcceptance") |
-		{ServiceId, VpcEndpointId, VpcEndpointState, Tags}')
+    .VpcEndpointConnections[] | select(.VpcEndpointState=="pendingAcceptance") |
+        {ServiceId, VpcEndpointId, VpcEndpointState, Tags}')
 
 	# Loop through each line of the jq output
 	while IFS= read -r line; do

@@ -7,13 +7,13 @@ export -f ecs-clusters
 
 task-def() {
 	local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
-	If no task definition is provided a list of active task definitons is returned
+    If no task definition is provided a list of active task definitons is returned
 
-	Optional Arguments:
-	task-definition	family-name:revision
+    Optional Arguments:
+    task-definition family-name:revision
 
-	Options:
-	--help       Display this help message"
+    Options:
+    --help       Display this help message"
 
 	# Check if the '--help' flag is present
 	if [[ "$*" == *"--help"* ]]; then
@@ -30,14 +30,14 @@ export -f task-def
 
 ecs-service() {
 	local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
-	If no cluster and service name is provided, a list of services are returned.
+    If no cluster and service name is provided, a list of services are returned.
 
-	Optional Arguments:
-	cluster		ECS Cluster the service is deployed on
-	service		Family name of the service
+    Optional Arguments:
+    cluster     ECS Cluster the service is deployed on
+    service     Family name of the service
 
-	Options:
-	--help       Display this help message"
+    Options:
+    --help       Display this help message"
 
 	# Check if the '--help' flag is present
 	if [[ "$*" == *"--help"* ]]; then
@@ -74,7 +74,7 @@ ecs-tasks() {
 	aws --output json ecs list-tasks --cluster "$1" \
 		--service-name "$2" \
 		--desired-status RUNNING | jq -r '.taskArns[] |
-		sub(".*/"; "")'
+        sub(".*/"; "")'
 }
 export -f ecs-tasks
 

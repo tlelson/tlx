@@ -9,23 +9,23 @@ cp-start() {
 }
 
 # TODO:
-#	- Allow no arguments for all pipelines and their status (change to cp-status)
-#	- Show Source commits of the execution at each stage
+#   - Allow no arguments for all pipelines and their status (change to cp-status)
+#   - Show Source commits of the execution at each stage
 cp-state() {
 	local help_text="Usage: ${FUNCNAME[0]} [options] [positional Args] [Optional Args]
-	Summarised current state of the specified pipeline.
+    Summarised current state of the specified pipeline.
 
-	Options:
-	-g/--guess		Guess the pipeline name from non-exact 'pipeline_name'
-	-f/--full		Full state. Not summarised.
-	--help			Display this help message
+    Options:
+    -g/--guess      Guess the pipeline name from non-exact 'pipeline_name'
+    -f/--full       Full state. Not summarised.
+    --help          Display this help message
 
-	Positional Arguments
-	pipeline_name	string matching one pipeline name. e.g 'meta'
+    Positional Arguments
+    pipeline_name   string matching one pipeline name. e.g 'meta'
 
-	Optional Arguments
-	stage_name		StageName to restrict output to. e.g 'Dev'
-	"
+    Optional Arguments
+    stage_name      StageName to restrict output to. e.g 'Dev'
+    "
 
 	# TODO: For each executionId (at each stage, get the Source version of each)
 	# This is probably getting too complex for jq now.
@@ -104,62 +104,62 @@ cp-state() {
 	fi
 
 	result=$(echo "${state}" | jq '
-		{pipelineName, updated, stages: [
-			.stageStates[] | select(.latestExecution.status) |
-			if ( .stageName == "Source") and (.latestExecution.status == "Succeeded")  then
-				{ stageName , status: .latestExecution.status,
-					sources: [
-						.actionStates[] |
-							if (.latestExecution != null) and ( .latestExecution.summary|startswith("{") ) then
-								{
-									actionName, lastStatusChange: .latestExecution.lastStatusChange,
-									msg: .latestExecution.summary | fromjson |
-										.CommitMessage|split("\n")[0],
-								}
-							else
-								{
-									actionName, lastStatusChange: .latestExecution.lastStatusChange,
-									msg: .latestExecution.summary
-								}
-							end
-					]
-				}
-			elif .latestExecution.status == "Succeeded" then
-				{ stageName , status: .latestExecution.status,
-					pipelineExecutionId: .latestExecution.pipelineExecutionId,
-					time: [ .actionStates[].latestExecution.lastStatusChange | select(. != null ) ] | sort | .[-1] ,
-				}
-			else
-				{ stageName, status: .latestExecution.status,
-					pipelineExecutionId: .latestExecution.pipelineExecutionId,
-					actions: [ .actionStates[]? | select(.latestExecution.status) |
-					if .latestExecution.status == "Failed" then
-						{ actionName , status: .latestExecution.status,
-						summary: .latestExecution.summary,
-						message: .latestExecution.errorDetails.message? ,
-						time: .latestExecution.lastStatusChange? ,
-						executionId: .latestExecution.actionExecutionId,
-						url: .latestExecution.externalExecutionUrl,
-					} | delpaths([. | to_entries | .[] | select(.value == null) | [.key]])
-					elif .latestExecution.status == "InProgress" then
-						{ actionName , status: .latestExecution.status,
-						token: .latestExecution.token,
-						}
-					else
-						{ actionName , status: .latestExecution.status }
-					end
-				] }
-			end
-			]
-		}
-		')
+        {pipelineName, updated, stages: [
+            .stageStates[] | select(.latestExecution.status) |
+            if ( .stageName == "Source") and (.latestExecution.status == "Succeeded")  then
+                { stageName , status: .latestExecution.status,
+                    sources: [
+                        .actionStates[] |
+                            if (.latestExecution != null) and ( .latestExecution.summary|startswith("{") ) then
+                                {
+                                    actionName, lastStatusChange: .latestExecution.lastStatusChange,
+                                    msg: .latestExecution.summary | fromjson |
+                                        .CommitMessage|split("\n")[0],
+                                }
+                            else
+                                {
+                                    actionName, lastStatusChange: .latestExecution.lastStatusChange,
+                                    msg: .latestExecution.summary
+                                }
+                            end
+                    ]
+                }
+            elif .latestExecution.status == "Succeeded" then
+                { stageName , status: .latestExecution.status,
+                    pipelineExecutionId: .latestExecution.pipelineExecutionId,
+                    time: [ .actionStates[].latestExecution.lastStatusChange | select(. != null ) ] | sort | .[-1] ,
+                }
+            else
+                { stageName, status: .latestExecution.status,
+                    pipelineExecutionId: .latestExecution.pipelineExecutionId,
+                    actions: [ .actionStates[]? | select(.latestExecution.status) |
+                    if .latestExecution.status == "Failed" then
+                        { actionName , status: .latestExecution.status,
+                        summary: .latestExecution.summary,
+                        message: .latestExecution.errorDetails.message? ,
+                        time: .latestExecution.lastStatusChange? ,
+                        executionId: .latestExecution.actionExecutionId,
+                        url: .latestExecution.externalExecutionUrl,
+                    } | delpaths([. | to_entries | .[] | select(.value == null) | [.key]])
+                    elif .latestExecution.status == "InProgress" then
+                        { actionName , status: .latestExecution.status,
+                        token: .latestExecution.token,
+                        }
+                    else
+                        { actionName , status: .latestExecution.status }
+                    end
+                ] }
+            end
+            ]
+        }
+        ')
 	# --arg stage_name "$stage_name"
 	if [ -z "$stage_name" ]; then
 		echo "$result" | jq
 	else
 		echo "$result" | jq "{pipelineName, updated,
-			stage: .stages[]| select(.stageName==\"$stage_name\")
-		}"
+            stage: .stages[]| select(.stageName==\"$stage_name\")
+        }"
 	fi
 }
 export -f cp-state
@@ -215,11 +215,11 @@ cp-status() {
 	# Define the help text
 	local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
 
-	Optional Arguments:
-	pipeline_name_filter	grep regex to filter pipelines
+    Optional Arguments:
+    pipeline_name_filter    grep regex to filter pipelines
 
-	Options:
-	--help					Display this help message"
+    Options:
+    --help                  Display this help message"
 
 	# Check if the '--help' flag is present
 	if [[ "$*" == *"--help"* ]]; then
@@ -237,10 +237,10 @@ cp-status() {
 		echo "PIPELINE STATUS LASTRUN"
 		aws --output json codepipeline list-pipelines | jq '.pipelines[].name' |
 			grep "${filter_pattern}" | xargs -P20 -n1 -I {} sh -c 'aws --output json \
-					codepipeline list-pipeline-executions \
-					--pipeline-name "$1" --max-items 1 | jq -r --arg p "$1" \
-					'\''.pipelineExecutionSummaries[0] | [$p, .status, .startTime] |
-					.[2] |= sub(":[0-9]{2}\\.[0-9]{6}"; "")  | @tsv'\'' ' _ {}
+                    codepipeline list-pipeline-executions \
+                    --pipeline-name "$1" --max-items 1 | jq -r --arg p "$1" \
+                    '\''.pipelineExecutionSummaries[0] | [$p, .status, .startTime] |
+                    .[2] |= sub(":[0-9]{2}\\.[0-9]{6}"; "")  | @tsv'\'' ' _ {}
 
 	} | column -t
 
@@ -250,14 +250,14 @@ export -f cp-status
 cp-definition() {
 	local help_text="Usage: ${FUNCNAME[0]} [Arguments] [Optional Arguments] [options]
 
-	Arguments:
-	pipeline_name
+    Arguments:
+    pipeline_name
 
-	Optional Arguments:
-	version			Default: current version. See execution list for version tags.
+    Optional Arguments:
+    version         Default: current version. See execution list for version tags.
 
-	Options:
-	--help			Display this help message"
+    Options:
+    --help          Display this help message"
 
 	# Check if the '--help' flag is present
 	if [[ "$*" == *"--help"* ]]; then
@@ -283,11 +283,11 @@ export -f cp-definition
 cp-update() {
 	local help_text="Usage: ${FUNCNAME[0]} [ARGS] [options]
 
-	Arguments:
-	file-path	Path to a yaml file that describes the pipeline to be updated. e.g /tmp/pipeline.yaml
+    Arguments:
+    file-path   Path to a yaml file that describes the pipeline to be updated. e.g /tmp/pipeline.yaml
 
-	Options:
-	--help		 Display this help message"
+    Options:
+    --help       Display this help message"
 
 	# Check if the '--help' flag is present
 	if [[ "$*" == *"--help"* ]]; then
