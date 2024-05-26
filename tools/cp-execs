@@ -27,7 +27,7 @@ session = boto3.Session()
 
 def _json_default(obj):
     if isinstance(obj, datetime):
-        return obj.isoformat(timespec='minute')
+        return obj.isoformat(timespec='minutes')
     return str(obj)
 
 def raw_executions(cp: CodePipelineClient, pipeline_name: str, count) -> Generator[PES, None, None]:
@@ -37,8 +37,7 @@ def raw_executions(cp: CodePipelineClient, pipeline_name: str, count) -> Generat
     more = True
     lpe_args = {"pipelineName": pipeline_name, "maxResults": 10}
     while more and (i<count):
-        res: ListPipelineExecutionsOutputTypeDef = cp.list_pipeline_executions(
-            **lpe_args)
+        res: ListPipelineExecutionsOutputTypeDef = cp.list_pipeline_executions(**lpe_args)
         for execution in res["pipelineExecutionSummaries"]:
             i +=1
             yield execution
@@ -63,10 +62,12 @@ class ExecutionSummary:
             max_pool_connections=concurrency,
         ))
 
-    def run(self):
+    def run(self) -> list[dict]:
+        """Returns a list of Execution summararies.  Return type varies on the number and names of
+        the 'Source' that are configured to each pipeline."""
         return asyncio.run(self._compile())
 
-    async def _compile(self):
+    async def _compile(self) -> list[dict]:
 
         tasks = []
         for pes in raw_executions(self._cp, self._pipeline_name, self._count):
@@ -76,13 +77,13 @@ class ExecutionSummary:
         # These are ordered, so the should be printed in order
         return await asyncio.gather(*tasks)
 
-    async def _build_execution(self, pes: PES) -> Dict[str, str | int | datetime | None]:
-        e: Dict[str, str | int | datetime | None] = {
+    async def _build_execution(self, pes: PES) -> dict:
+        e = {
             "StartTime": "",
             "Ver": "",
             "StagesRan": 0,
             "FinalStage": "",
-            "Status": pes.get("status"),
+            "Status": "",
         }
         for source in pes.get("sourceRevisions", []):
             e[source["actionName"]] = source.get("revisionId", "")[:8]
@@ -90,19 +91,18 @@ class ExecutionSummary:
         # looks syncronous but needed to allow other threads running the same command for a
         # different execution.
         loop = asyncio.get_event_loop()
-        ed_task = loop.run_in_executor( self._executor,
+        ed_task = loop.run_in_executor(self._executor,
             execution_details, self._cp, self._pipeline_name,
             pes.get("pipelineExecutionId", ""))
 
         eds = await ed_task
-        e["StagesRan"] = len(eds)
-
+        e["StagesRan"] = len(set(ed.get("stageName") for ed in eds))
         last_stage = eds[0]
         del eds  # only need the last_stage now
 
         e["Ver"] = last_stage.get("pipelineVersion")
         e["FinalStage"] = last_stage.get("stageName")
-        # e["StageStatus"] = last_stage.get("status") # Not sure. Sometimes different to Status.
+        e["Status"] = last_stage.get("status")
         if st := last_stage.get("startTime"):
             e["StartTime"] = st
 

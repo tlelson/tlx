@@ -25,7 +25,7 @@ cp: CodePipelineClient = session.client('codepipeline')
 
 def _json_default(obj):
     if isinstance(obj, datetime):
-        return obj.isoformat(timespec='minute')
+        return obj.isoformat(timespec='minutes')
     return str(obj)
 
 
