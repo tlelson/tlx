@@ -6,7 +6,7 @@ alias aws-who-am-i='aws-list-accounts | grep "$(aws --output json sts get-caller
 alias security-groups="aws --output json ec2 describe-security-groups | jq -c '.SecurityGroups[] | {GroupId, GroupName, Description}'"
 
 security-group-rules() {
-	local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
+    local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
     If security group is provided, all rules are returned.
 
     Optional Arguments:
@@ -15,20 +15,20 @@ security-group-rules() {
     Options:
     --help           Display this help message"
 
-	# Check if the '--help' flag is present
-	if [[ "$*" == *"--help"* ]]; then
-		echo "$help_text"
-		return 0 # Exit the function after printing help
-	fi
+    # Check if the '--help' flag is present
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0 # Exit the function after printing help
+    fi
 
-	cmd="aws ec2 describe-security-group-rules"
-	# Add filters if $1 is empty (meaning no argument provided)
-	if [ -n "$1" ]; then
-		cmd+=" --filters \"Name=group-id,Values=$1\""
-	fi
+    cmd="aws ec2 describe-security-group-rules"
+    # Add filters if $1 is empty (meaning no argument provided)
+    if [ -n "$1" ]; then
+        cmd+=" --filters \"Name=group-id,Values=$1\""
+    fi
 
-	# Execute the constructed command string
-	eval "$cmd"
+    # Execute the constructed command string
+    eval "$cmd"
 
 }
 export -f security-group-rules
@@ -36,7 +36,7 @@ export -f security-group-rules
 alias load-balancers="aws --output json elbv2 describe-load-balancers | jq -r '.LoadBalancers[].LoadBalancerName' "
 
 load-balancer() {
-	local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
+    local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
 
     Optional Arguments:
     loadbalancer_names  comma seperated list of load balancer names
@@ -44,19 +44,19 @@ load-balancer() {
     Options:
     --help           Display this help message"
 
-	# Check if the '--help' flag is present
-	if [[ "$*" == *"--help"* ]]; then
-		echo "$help_text"
-		return 0 # Exit the function after printing help
-	fi
+    # Check if the '--help' flag is present
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0 # Exit the function after printing help
+    fi
 
-	if [ -z "$1" ]; then
-		echo "$help_text"
-		return 1
-	fi
-	lb="$1"
+    if [ -z "$1" ]; then
+        echo "$help_text"
+        return 1
+    fi
+    lb="$1"
 
-	aws --output json elbv2 describe-load-balancers --names "$lb" | jq -c '.LoadBalancers[]'
+    aws --output json elbv2 describe-load-balancers --names "$lb" | jq -c '.LoadBalancers[]'
 
 }
 export -f load-balancer
@@ -64,7 +64,7 @@ export -f load-balancer
 alias eni='aws ec2 describe-network-interfaces --network-interface-ids '
 
 enis() {
-	local help_text="Usage: ${FUNCNAME[0]} [options]
+    local help_text="Usage: ${FUNCNAME[0]} [options]
     Lists ENI's in the current account. For more detail on a specific ENI use the aws cli
     command. Its actually very good. See also '--filters'
 
@@ -73,13 +73,13 @@ enis() {
     Options:
     --help           Display this help message"
 
-	# Check if the '--help' flag is present
-	if [[ "$*" == *"--help"* ]]; then
-		echo "$help_text"
-		return 0 # Exit the function after printing help
-	fi
+    # Check if the '--help' flag is present
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0 # Exit the function after printing help
+    fi
 
-	aws --output json ec2 describe-network-interfaces | jq '[.NetworkInterfaces[] |
+    aws --output json ec2 describe-network-interfaces | jq '[.NetworkInterfaces[] |
         {NetworkInterfaceId, InterfaceType, PrivateIpAddress,
         PublicIP: [.. | .PublicIp?] | map(select(. != null)) | unique |.[0] ,
         Description,
@@ -89,7 +89,7 @@ enis() {
 export -f enis
 
 nacls() {
-	local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
+    local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
     Normally we are looking NACLs to find why our traffic is blocked.  In this case supply
     the subnet. If no subnet is provided a list of NACLs will be returned.
 
@@ -99,25 +99,25 @@ nacls() {
     Options:
     --help           Display this help message"
 
-	# Check if the '--help' flag is present
-	if [[ "$*" == *"--help"* ]]; then
-		echo "$help_text"
-		return 0 # Exit the function after printing help
-	fi
+    # Check if the '--help' flag is present
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0 # Exit the function after printing help
+    fi
 
-	if [ -n "$1" ]; then
-		aws --output json ec2 describe-network-acls \
-			--query 'NetworkAcls[].{Entries: Entries}' \
-			--filters "Name=association.subnet-id,Values=$1" | jq '[.[].Entries[] | {
+    if [ -n "$1" ]; then
+        aws --output json ec2 describe-network-acls \
+            --query 'NetworkAcls[].{Entries: Entries}' \
+            --filters "Name=association.subnet-id,Values=$1" | jq '[.[].Entries[] | {
                 CidrBlock, Egress, PortRange: "\(.PortRange.From) - \(.PortRange.To)", Protocol, RuleAction, RuleNumber
             }] | sort_by(.RuleNumber)'
-	else
-		aws --output json ec2 describe-network-acls \
-			--query 'NetworkAcls[]' | jq '[.[] | {
+    else
+        aws --output json ec2 describe-network-acls \
+            --query 'NetworkAcls[]' | jq '[.[] | {
                 Name: (.Tags | map(select(.Key == "Name")) | .[0].Value),
                 VpcId, Subnets: [.Associations[].SubnetId],
             }]'
-	fi
+    fi
 }
 export -f nacls
 
@@ -125,16 +125,16 @@ alias profiles='aws route53profiles list-profiles'
 alias profile-associations='aws route53profiles list-profile-associations'
 
 profile-resource-associations() {
-	if [ -z "$1" ]; then
-		echo "Must provide a profile ID as an argument"
-		return 1
-	fi
-	aws route53profiles list-profile-resource-associations --profile-id "$1"
+    if [ -z "$1" ]; then
+        echo "Must provide a profile ID as an argument"
+        return 1
+    fi
+    aws route53profiles list-profile-resource-associations --profile-id "$1"
 }
 export -f profile-resource-associations
 
 connectivity-test() {
-	local help_text="Usage: ${FUNCNAME[0]} [Optional Arguments]
+    local help_text="Usage: ${FUNCNAME[0]} [Optional Arguments]
     If no argument is provided, a lists of existing connectivity tests is returned.
 
     Optional Arguments
@@ -143,33 +143,33 @@ connectivity-test() {
     Options:
     --help           Display this help message"
 
-	# Check if the '--help' flag is present
-	if [[ "$*" == *"--help"* ]]; then
-		echo "$help_text"
-		return 0 # Exit the function after printing help
-	fi
-	if [ -z "$1" ]; then
-		aws --output json ec2 describe-network-insights-paths | jq -rc '.NetworkInsightsPaths[] | {
+    # Check if the '--help' flag is present
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0 # Exit the function after printing help
+    fi
+    if [ -z "$1" ]; then
+        aws --output json ec2 describe-network-insights-paths | jq -rc '.NetworkInsightsPaths[] | {
             Name: (.Tags | map(select(.Key == "Name")) | .[0].Value),
             Id: .NetworkInsightsPathId,
     }'
-	else
-		tid="$1"
-		aws --output json ec2 describe-network-insights-paths \
-			--network-insights-path-ids "$tid" | jq '
+    else
+        tid="$1"
+        aws --output json ec2 describe-network-insights-paths \
+            --network-insights-path-ids "$tid" | jq '
                     .NetworkInsightsPaths[0]'
-	fi
+    fi
 }
 export -f connectivity-test
 
 connectivity-test-runs() {
-	if [ -z "$1" ]; then
-		echo "Must provide a connectivity test ID as an argument"
-		return 1
-	fi
+    if [ -z "$1" ]; then
+        echo "Must provide a connectivity test ID as an argument"
+        return 1
+    fi
 
-	aws --output json ec2 describe-network-insights-analyses \
-		--network-insights-path-id "$1" | jq -c '.NetworkInsightsAnalyses |
+    aws --output json ec2 describe-network-insights-analyses \
+        --network-insights-path-id "$1" | jq -c '.NetworkInsightsAnalyses |
         sort_by(.StartDate)| .[] | {
         StartDate,
         AnalysisId: .NetworkInsightsAnalysisId,
@@ -180,7 +180,7 @@ connectivity-test-runs() {
 export -f connectivity-test-runs
 
 connectivity-test-run() {
-	local help_text="Usage: ${FUNCNAME[0]} [Arguments]
+    local help_text="Usage: ${FUNCNAME[0]} [Arguments]
     Details of a specific analysis.
 
     Use 'connectivity-tests' to find the test you want
@@ -192,30 +192,30 @@ connectivity-test-run() {
     Options:
     --help           Display this help message"
 
-	# Check if the '--help' flag is present
-	if [[ "$*" == *"--help"* ]]; then
-		echo "$help_text"
-		return 0 # Exit the function after printing help
-	fi
+    # Check if the '--help' flag is present
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0 # Exit the function after printing help
+    fi
 
-	if [ "$#" -ne 2 ]; then
-		echo "$help_text"
-		return 1
-	fi
+    if [ "$#" -ne 2 ]; then
+        echo "$help_text"
+        return 1
+    fi
 
-	aws ec2 describe-network-insights-analyses \
-		--network-insights-path-id "$1" \
-		--network-insights-analysis-ids "$2"
+    aws ec2 describe-network-insights-analyses \
+        --network-insights-path-id "$1" \
+        --network-insights-analysis-ids "$2"
 }
 export -f connectivity-test-run
 
 iam-roles() {
-	aws --output json iam list-roles | jq -r '.Roles[].Arn'
+    aws --output json iam list-roles | jq -r '.Roles[].Arn'
 }
 export -f iam-roles
 
 iam-policy() {
-	local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
+    local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
     Without a policy ARN a list of IAM Policy Arns is returned. If an ARN is provided, the policy document of the latest version is returned.
 
     Optional Arguments:
@@ -224,21 +224,21 @@ iam-policy() {
     Options:
     --help           Display this help message"
 
-	# Check if the '--help' flag is present
-	if [[ "$*" == *"--help"* ]]; then
-		echo "$help_text"
-		return 0 # Exit the function after printing help
-	fi
+    # Check if the '--help' flag is present
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0 # Exit the function after printing help
+    fi
 
-	if [ -z "$1" ]; then
-		aws iam list-policies \
-			--query 'Policies[*].[Arn, DefaultVersionId]'
-	else
-		arn="$1"
-		versionId=$(aws --output json iam get-policy --policy-arn "$arn" \
-			--query 'Policy.DefaultVersionId' | jq -r)
-		aws --output json iam get-policy-version --policy-arn "$arn" \
-			--version-id "$versionId" --query 'PolicyVersion.Document' | jq
-	fi
+    if [ -z "$1" ]; then
+        aws iam list-policies \
+            --query 'Policies[*].[PolicyName, Arn, DefaultVersionId]'
+    else
+        arn="$1"
+        versionId=$(aws --output json iam get-policy --policy-arn "$arn" \
+            --query 'Policy.DefaultVersionId' | jq -r)
+        aws --output json iam get-policy-version --policy-arn "$arn" \
+            --version-id "$versionId" --query 'PolicyVersion.Document' | jq
+    fi
 }
 export -f iam-policy
