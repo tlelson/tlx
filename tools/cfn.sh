@@ -204,3 +204,25 @@ stack-deploy() {
 	fi
 
 }
+
+stack-delete() {
+    local help_text="Usage: ${FUNCNAME[0]} [Arguments] [options]
+    This will force delete a stack. Use carefully.
+
+    Arguments:
+    stack_name
+
+    Options:
+    --help       Display this help message"
+
+    if [ -z "$1" ]; then
+        echo "$help_text"
+        return 1
+    fi
+    stack_name="$1"
+
+    cmd="aws cloudformation delete-stack --stack-name ${stack_name} --deletion-mode FORCE_DELETE_STACK"
+
+    eval "${cmd}"
+}
+export -f stack-delete
