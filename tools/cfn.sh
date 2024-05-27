@@ -214,7 +214,7 @@ stack-delete() {
     --force     Force delete a DELETE_FAILED stack
     --help      Display this help message"
 
-    local stack_name="$1"
+    local stack_name=""
     local force=0
 
     # Check if no arguments are provided
