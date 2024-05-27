@@ -213,15 +213,53 @@ stack-delete() {
     stack_name
 
     Options:
-    --help       Display this help message"
+    --force     Force delete a DELETE_FAILED stack
+    --help      Display this help message"
 
-    if [ -z "$1" ]; then
+    local stack_name="$1"
+    local force=0
+
+    # Check if no arguments are provided
+    if [[ $# -eq 0 ]]; then
         echo "$help_text"
         return 1
     fi
     stack_name="$1"
 
-    cmd="aws cloudformation delete-stack --stack-name ${stack_name} --deletion-mode FORCE_DELETE_STACK"
+    # Parse command line arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        -f | --force)
+            force=1
+            shift
+            ;;
+        --help)
+            echo "$help_text"
+            return 0
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            echo "$help_text"
+            return 1
+            ;;
+        *)
+            if [[ -z "$stack_name" ]]; then
+                stack_name="$1"
+            else
+                echo "Unexpected argument: $1"
+                echo "$help_text"
+                return 1
+            fi
+            shift
+            ;;
+        esac
+    done
+
+    cmd="aws cloudformation delete-stack --stack-name ${stack_name} "
+
+    if ((force == 1)); then
+        cmd="${cmd} --deletion-mode FORCE_DELETE_STACK"
+    fi
 
     eval "${cmd}"
 }
