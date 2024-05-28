@@ -174,8 +174,7 @@ cp-approve() {
         return 1
     fi
     pipeline_name="$1"
-    # TODO: Could do this more efficiently with aws cmd
-    pipeline=$(cp-check "${pipeline_name}")
+    pipeline=$(cp-state "${pipeline_name}")
 
     stage_to_approve=""
 
@@ -200,8 +199,19 @@ cp-approve() {
     echo "approving stage: ${stage_to_approve}"
 
     action=$(echo "${pipeline}" | jq -rc --arg stage "${stage_to_approve}" '.stages[] | select(.stageName == $stage) | .actions[] | select(.status == "InProgress") | {actionName, token}')
+
+    if [[ -z "$action" ]]; then
+        echo "Stage has no 'InProgress' actions. Rerun the pipeline first."
+        return 1
+    fi
+
     action_name=$(echo "$action" | jq -r '.actionName')
     token=$(echo "$action" | jq -r '.token')
+
+    if [[ -z "$token" ]]; then
+        echo "Could not get a 'token' for this stage."
+        return 1
+    fi
 
     aws --output json codepipeline put-approval-result \
         --pipeline-name "${pipeline_name}" \
@@ -212,6 +222,32 @@ cp-approve() {
 
 }
 export -f cp-approve
+
+cp-retry() {
+    if [ "$#" -ne 2 ]; then
+        echo "provide a pipeline name as the first argument, the stage as a second argument."
+        echo "e.g ${FUNCNAME[0]} 'meta' 'Approval_To_Staging' "
+        return 1
+    fi
+    pipeline_name="$1"
+    stage="$2"
+
+    pipeline=$(cp-state "${pipeline_name}")
+    execution_id=$(echo "$pipeline" | jq -r --arg stage "$stage" '.stages[] | select(.stageName==$stage) | .pipelineExecutionId')
+
+    if [[ -z "$execution_id" ]]; then
+        echo "Could not get a 'execution_id' for this stage."
+        return 1
+    fi
+
+    aws codepipeline retry-stage-execution \
+        --pipeline-name "${pipeline_name}" \
+        --stage-name "${stage}" \
+        --pipeline-execution-id "${execution_id}" \
+        --retry-mode FAILED_ACTIONS
+
+}
+export -f cp-retry
 
 cp-status() {
     # Define the help text
