@@ -6,17 +6,17 @@ alias record-sets-full='aws --output json route53 list-resource-record-sets --ho
 
 # TODO: Make this table-able
 record-sets() {
-	if [ "$#" -ne 0 ]; then
-		hz="$1"
-		cmd="aws --output json route53 list-hosted-zones | jq --arg hz \"$hz\" '.HostedZones[] \
+    if [ "$#" -ne 0 ]; then
+        hz="$1"
+        cmd="aws --output json route53 list-hosted-zones | jq --arg hz \"$hz\" '.HostedZones[] \
                 | select(.Name == \"$hz\") | .Id' "
-	else
-		cmd="aws --output json route53 list-hosted-zones | jq '.HostedZones[] | .Id' "
-	fi
+    else
+        cmd="aws --output json route53 list-hosted-zones | jq '.HostedZones[] | .Id' "
+    fi
 
-	eval "$cmd" | xargs -P4 -n1 -I {} aws --output json route53 \
-		list-resource-record-sets --hosted-zone-id '{}' | jq '.ResourceRecordSets[] | select(.Type | IN("SOA", "NS") | not) | {Name, Type, Target: (.AliasTarget.DNSName? // .ResourceRecords[].Value)}
-    ' | jq --slurp
-
+    eval "$cmd" | xargs -P4 -n1 -I {} aws --output json route53 \
+        list-resource-record-sets --hosted-zone-id '{}' | jq -c '.ResourceRecordSets[] | {Name, Type, Target: (.AliasTarget.DNSName? // .ResourceRecords[].Value)}
+    '
+    #| select(.Type | IN("SOA", "NS") | not)
 }
 export -f record-sets

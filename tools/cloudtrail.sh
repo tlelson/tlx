@@ -136,7 +136,7 @@ cloudtrail-query() {
         formatter="$formatter | select(.CloudTrailEvent|test(\"${event_pattern}\"))"
     fi
 
-    formatter="$formatter | { EventTime, EventName, Username, EventId}"
+    formatter="$formatter | { EventTime, EventSource, EventName, Username, EventId}"
     echo "$results" | jq -c "${formatter}"
 
     return 0
