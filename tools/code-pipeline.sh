@@ -274,12 +274,17 @@ cp-status() {
     {
         echo "PIPELINE STATUS LASTRUN"
         aws --output json codepipeline list-pipelines | jq '.pipelines[].name' |
-            grep "${filter_pattern}" | xargs -P20 -n1 -I {} sh -c 'aws --output json \
-                    codepipeline list-pipeline-executions \
-                    --pipeline-name "$1" --max-items 1 | jq -r --arg p "$1" \
-                    '\''.pipelineExecutionSummaries[0] | [$p, .status, .startTime] |
-                    .[2] |= sub(":[0-9]{2}\\.[0-9]{6}"; "")  | @tsv'\'' ' _ {}
-
+            grep "${filter_pattern}" | xargs -P20 -n1 -I {} sh -c '
+            aws --output json codepipeline list-pipeline-executions \
+                --pipeline-name "$1" --max-items 1 | jq -r --arg p "$1" \
+                '"'"'
+                if (.pipelineExecutionSummaries | length) == 0 then
+                    [$p, "NO_EXECUTIONS", "N/A"]
+                else
+                    .pipelineExecutionSummaries[0] |
+                    [$p, .status?, (.startTime | sub(":[0-9]{2}\\.[0-9]{6}"; "")) // empty]
+                end | @tsv
+                '"'"' ' _ {}
     } | column -t
 
 }
