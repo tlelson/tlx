@@ -107,7 +107,7 @@ cp-state() {
 
     result=$(echo "${state}" | jq '
         {pipelineName, updated, stages: [
-            .stageStates[] | select(.latestExecution.status) |
+            .stageStates[] |
             if ( .stageName == "Source") and (.latestExecution.status == "Succeeded")  then
                 { stageName , status: .latestExecution.status,
                     sources: [
@@ -129,11 +129,13 @@ cp-state() {
             elif .latestExecution.status == "Succeeded" then
                 { stageName , status: .latestExecution.status,
                     pipelineExecutionId: .latestExecution.pipelineExecutionId,
+                    transitionEnabled: .inboundTransitionState.enabled,
                     time: [ .actionStates[].latestExecution.lastStatusChange | select(. != null ) ] | sort | .[-1] ,
                 }
             else
                 { stageName, status: .latestExecution.status,
                     pipelineExecutionId: .latestExecution.pipelineExecutionId,
+                    transitionEnabled: .inboundTransitionState.enabled,
                     actions: [ .actionStates[]? | select(.latestExecution.status) |
                     if .latestExecution.status == "Failed" then
                         { actionName , status: .latestExecution.status,
