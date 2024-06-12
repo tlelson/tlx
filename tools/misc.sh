@@ -242,3 +242,7 @@ iam-policy() {
     fi
 }
 export -f iam-policy
+
+param() {
+    aws ssm describe-parameters --query "Parameters[*].[Name,Type,LastModifiedDate,Version]" --output table
+}
