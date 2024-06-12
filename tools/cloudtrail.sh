@@ -10,6 +10,7 @@ cloudtrail-query() {
     local username=""
     local full_history="false"
     local event_pattern=""
+    local write_actions=""
 
     # Help message
     help_text="Usage: cloud-trail-query [OPTIONS]
@@ -34,10 +35,15 @@ cloudtrail-query() {
 
     Filter parameters (post-response):
         -p, --event-pattern    A text pattern to filter events by. e.g 'Prod'
+        -w, --write-actions    Exclude Read operations such as Get*,List* etc
 
     Other Options:
         --full-history     Retrieve full history. Required IFF no other args are provided.
-        --help             Display this help message"
+        --help             Display this help message
+
+    Examples:
+        cloudtrail-query -u 'name@company.com' -s \"2 day ago\" | jtbl
+        "
 
     # Check if no arguments are provided
     if [[ $# -eq 0 ]]; then
@@ -65,6 +71,10 @@ cloudtrail-query() {
         -p | --event-pattern)
             event_pattern="$2"
             shift 2
+            ;;
+        -w | --write-actions)
+            write_actions="true"
+            shift
             ;;
         -o | --event-source)
             event_source="$2"
@@ -137,7 +147,11 @@ cloudtrail-query() {
     fi
 
     formatter="$formatter | { EventTime, EventSource, EventName, Username, EventId}"
-    echo "$results" | jq -c "${formatter}"
+    if [ -n "${write_actions}" ]; then
+        echo "$results" | jq -c "${formatter}" | grep -v 'List\|Describe\|Get\|Lookup'
+    else
+        echo "$results" | jq -c "${formatter}"
+    fi
 
     return 0
 }
@@ -176,3 +190,4 @@ cloudtrail-event() {
     echo "$result" | jq
 
 }
+export -f cloudtrail-event
