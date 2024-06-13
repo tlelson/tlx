@@ -26,13 +26,32 @@ cfn-exports() {
 }
 export -f cfn-exports
 
-# TODO: Speedup
 cfn-resources() {
+    local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
+    This can be a slow operation since it scans all resources from all Cloudformation stacks. Therfore the default concurrency is 32.  If you have errors or are running this over many accounts similtaneously you may need to reduce concurrency.
+
+    Returns jsonlines.
+
+    Optional Arguments:
+    concurrency  e.g 4 (default 32)
+
+    Options:
+    --help       Display this help message
+
+    Examples:
+    cfn-resources | grep 'IAM::Role' | jtbl
+    "
+
     # This returns all resources deployed by all cfn stacks.  It takes an optional argument
     # that defines the level of concurrency.
     # E.g:
     #   cfn-resources           # Uses 32 concurrent processes
     #   cfn-resources 4         # Uses  4 concurrent processes
+
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0 # Exit the function after printing help
+    fi
 
     concurrency=32
 
