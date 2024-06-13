@@ -209,40 +209,6 @@ connectivity-test-run() {
 }
 export -f connectivity-test-run
 
-iam-roles() {
-    aws --output json iam list-roles | jq -r '.Roles[].Arn'
-}
-export -f iam-roles
-
-iam-policy() {
-    local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
-    Without a policy ARN a list of IAM Policy Arns is returned. If an ARN is provided, the policy document of the latest version is returned.
-
-    Optional Arguments:
-    policyArn   ARN of the IAM role
-
-    Options:
-    --help           Display this help message"
-
-    # Check if the '--help' flag is present
-    if [[ "$*" == *"--help"* ]]; then
-        echo "$help_text"
-        return 0 # Exit the function after printing help
-    fi
-
-    if [ -z "$1" ]; then
-        aws iam list-policies \
-            --query 'Policies[*].[PolicyName, Arn, DefaultVersionId]'
-    else
-        arn="$1"
-        versionId=$(aws --output json iam get-policy --policy-arn "$arn" \
-            --query 'Policy.DefaultVersionId' | jq -r)
-        aws --output json iam get-policy-version --policy-arn "$arn" \
-            --version-id "$versionId" --query 'PolicyVersion.Document' | jq
-    fi
-}
-export -f iam-policy
-
 param() {
     aws ssm describe-parameters --query "Parameters[*].[Name,Type,LastModifiedDate,Version]" --output table
 }
