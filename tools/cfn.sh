@@ -127,6 +127,7 @@ stack-params() {
 export -f stack-params
 
 stack-status() {
+    # TODO: jsonlines, remove grep and add --help
 
     stack_status=$(aws --output json cloudformation list-stacks |
         jq -rc '.StackSummaries[] | [ .StackName[:60], .StackStatus,

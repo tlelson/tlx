@@ -209,6 +209,44 @@ connectivity-test-run() {
 }
 export -f connectivity-test-run
 
-param() {
+params() {
     aws ssm describe-parameters --query "Parameters[*].[Name,Type,LastModifiedDate,Version]" --output table
 }
+export -f params
+
+lambda() {
+    local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
+    If no name is provided a list of lambdas is returned.
+
+    Arguments
+    lambda_name
+
+    Options:
+    --help           Display this help message
+
+    Output:
+    jsonlines if no name is provided or structured json if single lambda name provided.
+
+    Examples:
+    lambda | grep alert | jtbl
+    lambda alert-dev
+
+    "
+
+    # Check if the '--help' flag is present
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0 # Exit the function after printing help
+    fi
+
+    if [ -z "$1" ]; then
+        aws --output json lambda list-functions | jq -c '.Functions[] | {
+            FunctionName, Runtime,
+            LastModified,
+            LogGroup: .LoggingConfig.LogGroup,
+        }'
+    else
+        aws --output json lambda get-function-configuration --function-name "$1" | jq
+    fi
+}
+export -f lambda
