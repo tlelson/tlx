@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
 ecs-clusters() {
-	aws --output json ecs list-clusters | jq -r '.clusterArns[]'
+    aws --output json ecs list-clusters | jq -r '.clusterArns[]'
 }
 export -f ecs-clusters
 
 task-def() {
-	local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
+    local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
     If no task definition is provided a list of active task definitons is returned
 
     Optional Arguments:
@@ -15,21 +15,21 @@ task-def() {
     Options:
     --help       Display this help message"
 
-	# Check if the '--help' flag is present
-	if [[ "$*" == *"--help"* ]]; then
-		echo "$help_text"
-		return 0 # Exit the function after printing help
-	fi
-	if [ -n "$1" ]; then
-		aws ecs describe-task-definition --task-definition "$1"
-	else
-		aws --output json ecs list-task-definitions | jq -r '.taskDefinitionArns[] | sub("^[^/]+/"; "")'
-	fi
+    # Check if the '--help' flag is present
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0 # Exit the function after printing help
+    fi
+    if [ -n "$1" ]; then
+        aws ecs describe-task-definition --task-definition "$1"
+    else
+        aws --output json ecs list-task-definitions | jq -r '.taskDefinitionArns[] | sub("^[^/]+/"; "")'
+    fi
 }
 export -f task-def
 
 ecs-service() {
-	local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
+    local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
     If no cluster and service name is provided, a list of services are returned.
 
     Optional Arguments:
