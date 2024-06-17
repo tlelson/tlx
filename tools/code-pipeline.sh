@@ -276,7 +276,7 @@ cp-status() {
     {
         echo "PIPELINE STATUS LASTRUN"
         aws --output json codepipeline list-pipelines | jq '.pipelines[].name' |
-            grep "${filter_pattern}" | xargs -P20 -n1 -I {} sh -c '
+            grep "${filter_pattern}" | xargs -P20 -I {} sh -c '
             aws --output json codepipeline list-pipeline-executions \
                 --pipeline-name "$1" --max-items 1 | jq -r --arg p "$1" \
                 '"'"'

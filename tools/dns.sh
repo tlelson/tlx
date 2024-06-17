@@ -14,7 +14,7 @@ record-sets() {
         cmd="aws --output json route53 list-hosted-zones | jq '.HostedZones[] | .Id' "
     fi
 
-    eval "$cmd" | xargs -P4 -n1 -I {} aws --output json route53 \
+    eval "$cmd" | xargs -P4 -I {} aws --output json route53 \
         list-resource-record-sets --hosted-zone-id '{}' | jq -c '.ResourceRecordSets[] | {Name, Type, Target: (.AliasTarget.DNSName? // .ResourceRecords[].Value)}
     '
     #| select(.Type | IN("SOA", "NS") | not)
