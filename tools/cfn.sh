@@ -161,7 +161,33 @@ stack-template() {
 }
 export -f stack-template
 
-alias stack-resources='aws cloudformation list-stack-resources --stack-name '
+stack-resources() {
+    local help_text="Usage: ${FUNCNAME[0]} [ARGS] [options]
+    Returns a list of the deployed resources of a stack
+
+    Returns jsonlines.
+
+    Arguments:
+    stack_name
+
+    Options:
+    --help       Display this help message
+
+    Examples:
+    ${FUNCNAME[0]} 'stack-name' | grep 'IAM::Role' | jtbl
+    "
+
+    if [ -z "$1" ]; then
+        echo "provide a stack name as the first argument"
+        return 1
+    fi
+
+    stack_name="$1"
+
+    aws --output json cloudformation list-stack-resources \
+        --stack-name "$stack_name" | jq -c '
+            .StackResourceSummaries[] | {ResourceType, PhysicalResourceId, LogicalResourceId}'
+}
 
 stack-deploy() {
     local help_text="Usage: ${FUNCNAME[0]} [Arguments] [OPTIONAL_ARGS] [options]
