@@ -39,7 +39,7 @@ cfn-resources() {
     --help       Display this help message
 
     Examples:
-    cfn-resources | grep 'IAM::Role' | jtbl
+    ${FUNCNAME[0]} | grep 'IAM::Role' | jtbl
     "
 
     # This returns all resources deployed by all cfn stacks.  It takes an optional argument
@@ -127,22 +127,30 @@ stack-params() {
 export -f stack-params
 
 stack-status() {
-    # TODO: jsonlines, remove grep and add --help
+    local help_text="Usage: ${FUNCNAME[0]} [options]
+    Returns jsonlines.
 
-    stack_status=$(aws --output json cloudformation list-stacks |
-        jq -rc '.StackSummaries[] | [ .StackName[:60], .StackStatus,
-            (.LastUpdatedTime // .CreationTime)
-            ] | .[2] |= sub(":[0-9]{2}\\.[0-9]{6}"; "") | @tsv ' |
-        grep -v 'DELETE_COMPLETE')
+    Optional Arguments:
+    pipeline_name_filter    grep regex to filter pipelines
 
-    {
-        echo "STACKNAME STATUS UPDATED"
-        if [ "$#" -ne 0 ]; then
-            echo "$stack_status" | grep --color=auto "$*"
-        else
-            echo "$stack_status"
-        fi
-    } | column -t
+    Options:
+    --help                  Display this help message
+
+    Examples:
+    ${FUNCNAME[0]} | grep 'alert' | jtbl
+    "
+
+    # Check if the '--help' flag is present
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    aws --output json cloudformation list-stacks |
+        jq -c '.StackSummaries[] | select(.StackStatus!="DELETE_COMPLETE") | {
+            StackName, StackStatus,
+            Updated: (.LastUpdatedTime // .CreationTime | sub(":[0-9]{2}\\.[0-9]{6}"; ""))
+        }'
 
 }
 export -f stack-status
