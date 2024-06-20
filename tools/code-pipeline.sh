@@ -254,12 +254,19 @@ export -f cp-retry
 cp-status() {
     # Define the help text
     local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
+    Providing a filter pattern as an optional argument is more efficient than grepping the output stream because it limits the amount data that is requested from the AWS API's.
+
+    Returns jsonlines.
 
     Optional Arguments:
-    pipeline_name_filter    grep regex to filter pipelines
+    pipeline_name_filter    Glob pattern to reduce output.
 
     Options:
-    --help                  Display this help message"
+    --help                  Display this help message
+
+    Examples:
+    ${FUNCNAME[0]} 'deploy' | jtbl
+    "
 
     # Check if the '--help' flag is present
     if [[ "$*" == *"--help"* ]]; then
@@ -273,21 +280,23 @@ cp-status() {
         filter_pattern="$*"
     fi
 
-    {
-        echo "PIPELINE STATUS LASTRUN"
-        aws --output json codepipeline list-pipelines | jq '.pipelines[].name' |
-            grep "${filter_pattern}" | xargs -P20 -I {} sh -c '
-            aws --output json codepipeline list-pipeline-executions \
-                --pipeline-name "$1" --max-items 1 | jq -r --arg p "$1" \
-                '"'"'
-                if (.pipelineExecutionSummaries | length) == 0 then
-                    [$p, "NO_EXECUTIONS", "N/A"]
-                else
-                    .pipelineExecutionSummaries[0] |
-                    [$p, .status?, (.startTime | sub(":[0-9]{2}\\.[0-9]{6}"; "")) // empty]
-                end | @tsv
-                '"'"' ' _ {}
-    } | column -t
+    cmd='
+        aws --output json codepipeline list-pipeline-executions \
+            --pipeline-name "$1" --max-items 1 | jq -c --arg p "$1" \
+            '"'"'
+            if (.pipelineExecutionSummaries | length) == 0 then
+                {Name: $p, Status: "NO_EXECUTIONS", LastRun: "N/A"}
+            else
+                .pipelineExecutionSummaries[0] | {
+                    Name: $p, Status: .status?,
+                    LastRun: .startTime | sub(":[0-9]{2}\\.[0-9]{6}";"")
+                }
+            end
+            '"'"'
+    '
+
+    aws --output json codepipeline list-pipelines | jq '.pipelines[].name' |
+        grep "${filter_pattern}" | xargs -P32 -I {} sh -c "$cmd" _ {}
 
 }
 export -f cp-status

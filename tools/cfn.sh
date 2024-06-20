@@ -130,9 +130,6 @@ stack-status() {
     local help_text="Usage: ${FUNCNAME[0]} [options]
     Returns jsonlines.
 
-    Optional Arguments:
-    pipeline_name_filter    grep regex to filter pipelines
-
     Options:
     --help                  Display this help message
 
