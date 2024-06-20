@@ -182,12 +182,13 @@ cloudtrail-event() {
     result=$(jq --arg id "$event_id" '.Events[] |
         select(.EventId==$id) | .CloudTrailEvent | fromjson' "$event_file")
 
+    # Look in cache first
     if [ -z "$result" ]; then
-        echo "event_id not Found in: $event_file. Run cloudtrail-query first to get event_id"
-        return 1
+        aws cloudtrail lookup-events --lookup-attributes "AttributeKey=EventId,AttributeValue=$event_id" | jq '
+        .Events[0].CloudTrailEvent | fromjson'
+    else
+        echo "$result" | jq
     fi
-
-    echo "$result" | jq
 
 }
 export -f cloudtrail-event
