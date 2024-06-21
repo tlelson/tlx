@@ -11,18 +11,21 @@ cfn-exports() {
     # E.g:
     #   cfn-exports | jtbl -n
     #   cfn-exports 'subnet'
+    local help_text="Usage: ${FUNCNAME[0]} [options]
+    Returns all cloudformation exports.
 
-    exports=$(aws --output json cloudformation list-exports)
+    Returns jsonlines.
 
-    jq_exp='.Exports[]'
+    Options:
+    --help       Display this help message
 
-    if [ "$#" -ne 0 ]; then
-        jq_exp+="| select(.Name|test(\".*${*}.*\"))"
-    fi
+    Examples:
+    ${FUNCNAME[0]} | grep 'subnet' | jtbl
+    "
 
-    # Tabulate response
-    jq_exp+='| {Stack: .ExportingStackId | sub("^[^/]+/"; "") | sub("/.*$"; ""), Name, Value}'
-    echo "${exports}" | jq -c "$jq_exp"
+    aws --output json cloudformation list-exports | jq -c '.Exports[] | {
+        Stack: .ExportingStackId | sub("^[^/]+/"; "") | sub("/.*$"; ""),
+        Name, Value}'
 }
 export -f cfn-exports
 
