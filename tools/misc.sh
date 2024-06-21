@@ -139,6 +139,8 @@ connectivity-test() {
     local help_text="Usage: ${FUNCNAME[0]} [Optional Arguments]
     If no argument is provided, a lists of existing connectivity tests is returned.
 
+    Returns jsonlines
+
     Optional Arguments
     testID      If provided, this will give details of the specific test
 
