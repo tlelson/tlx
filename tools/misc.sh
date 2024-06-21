@@ -70,6 +70,8 @@ enis() {
 
     aws ec2 describe-network-interfaces --network-interface-ids \"\$eniID\"
 
+    Returns jsonlines
+
     Options:
     --help           Display this help message"
 
@@ -79,11 +81,11 @@ enis() {
         return 0 # Exit the function after printing help
     fi
 
-    aws --output json ec2 describe-network-interfaces | jq '[.NetworkInterfaces[] |
-        {NetworkInterfaceId, InterfaceType, PrivateIpAddress,
+    aws --output json ec2 describe-network-interfaces | tee /tmp/enis.json | jq -c '[.NetworkInterfaces[] |
+        {NetworkInterfaceId, InterfaceType, PrivateIpAddress, SubnetId,
         PublicIP: [.. | .PublicIp?] | map(select(. != null)) | unique |.[0] ,
         Description,
-        }] | sort_by(.PrivateIpAddress)
+        }] | sort_by(.PrivateIpAddress) | .[]
     '
 }
 export -f enis
