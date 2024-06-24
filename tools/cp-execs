@@ -35,7 +35,7 @@ def raw_executions(cp: CodePipelineClient, pipeline_name: str, count) -> Generat
     """
     i = 0
     more = True
-    lpe_args = {"pipelineName": pipeline_name, "maxResults": 10}
+    lpe_args = {"pipelineName": pipeline_name, "maxResults": count}
     while more and (i<count):
         res: ListPipelineExecutionsOutputTypeDef = cp.list_pipeline_executions(**lpe_args)
         for execution in res["pipelineExecutionSummaries"]:
