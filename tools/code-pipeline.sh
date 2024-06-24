@@ -5,7 +5,7 @@ cp-list() {
 }
 export -f cp-list
 cp-start() {
-    aws codepipeline start-pipeline-execution --name "$1"
+    aws codepipeline start-pipeline-execution --name "$1" | jq -c
 }
 export -f cp-start
 
@@ -246,7 +246,7 @@ cp-retry() {
         --pipeline-name "${pipeline_name}" \
         --stage-name "${stage}" \
         --pipeline-execution-id "${execution_id}" \
-        --retry-mode FAILED_ACTIONS
+        --retry-mode FAILED_ACTIONS | jq -c
 
 }
 export -f cp-retry
