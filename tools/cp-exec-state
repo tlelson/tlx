@@ -111,11 +111,19 @@ def get_state(pipeline_name, execution_id: str) -> State:
             le["status"] = "Failed"
         elif "InProgress" in ss:
             le["status"] = "InProgress"
+        elif (status := list(ss)) and len(status) == 1:
+            le["status"] = status[0]
         else:
-            le["status"] = "Success"
+            raise Exception(f"unrecognised status: {ss}")
+
+        # Don't show all successfull stages is it was successfull
+        # Keeping for now because this is used to go back in time and see what was run
+        # if le["status"] == "Success":
+            # stage_actions = []
 
         s = Stage(stageName=name, actionStates=stage_actions, latestExecution=le)
         stageStates.append(s)
+
 
     state = State(pipelineName=pipeline_name, pipelineVersion=pv,
                   stageStates=stageStates, executionId=execution_id)
