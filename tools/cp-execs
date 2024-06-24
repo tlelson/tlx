@@ -83,7 +83,7 @@ class ExecutionSummary:
             "Ver": "",
             "StagesRan": 0,
             "FinalStage": "",
-            "Status": "",
+            "Status": pes.get("status"),
         }
         for source in pes.get("sourceRevisions", []):
             e[source["actionName"]] = source.get("revisionId", "")[:8]
@@ -102,7 +102,6 @@ class ExecutionSummary:
 
         e["Ver"] = last_stage.get("pipelineVersion")
         e["FinalStage"] = last_stage.get("stageName")
-        e["Status"] = last_stage.get("status")
         if st := last_stage.get("startTime"):
             e["StartTime"] = st
 
