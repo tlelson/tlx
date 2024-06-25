@@ -176,3 +176,37 @@ lambda() {
     fi
 }
 export -f lambda
+
+cloudfront() {
+    local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
+
+    Optional Arguments
+    distribution_id
+
+    Options:
+    --help           Display this help message
+
+    Output:
+    jsonlines if no id is provided or structured json otherwise.
+
+    Examples:
+    ${FUNCNAME[0]} | jtbl
+    ${FUNCNAME[0]} E1BNGBGT8NQOPL | jq
+
+    "
+
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [ -z "$1" ]; then
+        aws --output json cloudfront list-distributions | tee /tmp/cfnt.json | jq -c '
+            .DistributionList.Items[]| {Id, DomainName, Status,
+            Modified: .LastModifiedTime | sub(":[0-9]{2}\\.[0-9]{6}";"")
+        }'
+        return 0
+    fi
+
+    aws cloudfront get-distribution --id "$1" | jq
+}
