@@ -21,14 +21,18 @@ security-group-rules() {
         return 0 # Exit the function after printing help
     fi
 
-    cmd="aws ec2 describe-security-group-rules"
+    cmd="aws --output json ec2 describe-security-group-rules"
     # Add filters if $1 is empty (meaning no argument provided)
     if [ -n "$1" ]; then
         cmd+=" --filters \"Name=group-id,Values=$1\""
     fi
 
     # Execute the constructed command string
-    eval "$cmd"
+    eval "$cmd" | jq '.SecurityGroupRules'
+
+    # TODO: return like this but add target (either CidrIpv4 or Security group)
+    #security-group-rules | jq -c '.[] | {GroupId, IsEgress, Proto: .IpProtocol, From: .FromPort, To: .To
+    #Port?}' | jtbl
 
 }
 export -f security-group-rules
