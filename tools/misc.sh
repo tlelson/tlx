@@ -210,3 +210,51 @@ cloudfront() {
 
     aws cloudfront get-distribution --id "$1" | jq
 }
+export -f cloudfront
+
+apig() {
+    # TODO: If id is provided, describe in details with:
+    #   - Active stage url
+    #   - API schema
+    #   - direct link to resource in web console
+
+    aws --output json apigateway get-rest-apis | jq -c '.items[] | {id, name,
+        created: .createdDate | sub(":[0-9]{2}\\.[0-9]{6}";""),
+        type: .endpointConfiguration.types | join(","),
+        vpcEndpointIds: (if .endpointConfiguration.vpcEndpointIds then
+            .endpointConfiguration.vpcEndpointIds | join(",")
+        else
+            null
+        end)
+    }'
+}
+
+apig-custom-domains() {
+    aws --output json apigateway get-domain-names | jq -c '.items[] | {
+        domainName,
+        type: (.endpointConfiguration.types | join(",")),
+        target: (
+            if .endpointConfiguration.types[0] == "REGIONAL" then
+                .regionalDomainName
+            elif .endpointConfiguration.types[0] == "EDGE" then
+                .distributionDomainName
+            else
+                "unknown type"
+            end
+        ),
+        zoneId: (
+            if .endpointConfiguration.types[0] == "REGIONAL" then
+                .regionalHostedZoneId
+            elif .endpointConfiguration.types[0] == "EDGE" then
+                .distributionHostedZoneId
+            else
+                "unknown type"
+            end
+        ),
+    }'
+
+    # TODO: Add apiId from command below to output
+    #aws --output json apigateway get-base-path-mappings --domain-name 'storybook.osfin.ca' | jq '
+    #.items[]
+    #'
+}
