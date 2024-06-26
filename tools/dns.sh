@@ -20,3 +20,15 @@ record-sets() {
     #| select(.Type | IN("SOA", "NS") | not)
 }
 export -f record-sets
+
+alias r53-profiles='aws route53profiles list-profiles'
+alias r53-profile-associations='aws route53profiles list-profile-associations'
+
+r53-profile-resource-associations() {
+    if [ -z "$1" ]; then
+        echo "Must provide a profile ID as an argument"
+        return 1
+    fi
+    aws route53profiles list-profile-resource-associations --profile-id "$1"
+}
+export -f r53-profile-resource-associations

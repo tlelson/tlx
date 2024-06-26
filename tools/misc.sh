@@ -123,18 +123,6 @@ nacls() {
 }
 export -f nacls
 
-alias profiles='aws route53profiles list-profiles'
-alias profile-associations='aws route53profiles list-profile-associations'
-
-profile-resource-associations() {
-    if [ -z "$1" ]; then
-        echo "Must provide a profile ID as an argument"
-        return 1
-    fi
-    aws route53profiles list-profile-resource-associations --profile-id "$1"
-}
-export -f profile-resource-associations
-
 params() {
     aws ssm describe-parameters --query "Parameters[*].[Name,Type,LastModifiedDate,Version]" --output table
 }
