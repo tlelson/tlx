@@ -204,13 +204,12 @@ cloudfront() {
 }
 export -f cloudfront
 
-apig() {
-    # TODO: If id is provided, describe in details with:
-    #   - Active stage url
-    #   - API schema
-    #   - direct link to resource in web console
+apis() {
 
-    aws --output json apigateway get-rest-apis | jq -c '.items[] | {id, name,
+    # TODO: If arg given
+    #aws --output json apigateway get-rest-api --rest-api-id "$api_id" | jq
+
+    res=$(aws --output json apigateway get-rest-apis | jq -c '.items[] | {id, name,
         created: .createdDate | sub(":[0-9]{2}\\.[0-9]{6}";""),
         type: .endpointConfiguration.types | join(","),
         vpcEndpointIds: (if .endpointConfiguration.vpcEndpointIds then
@@ -218,11 +217,57 @@ apig() {
         else
             null
         end)
-    }'
+    }')
+
+    concurrency=32
+
+    task() {
+        obj="$1"
+        api_id=$(echo "$obj" | jq -r '.id')
+        #api_id='53ahy0oiuf'
+        ls=$(aws apigateway get-stages --rest-api-id "$api_id" \
+            --query 'item' | jq -r 'sort_by(.createdDate) | last | .stageName')
+        line=$(jq -c -n --argjson obj "$obj" --arg ls \
+            "$ls" '$obj + {latest_stage: $ls}')
+        echo "$line"
+    }
+
+    (
+        pids=()
+        while IFS= read -r obj; do
+            ((i = i % concurrency)) # Exits with i. Can't exit on first error
+            ((i++ == 0)) && wait
+            task "$obj" &
+            pids+=($!)
+        done <<<"$res"
+
+        # Wait for all backgrounded tasks
+        for pid in "${pids[@]}"; do
+            wait "$pid"
+        done
+    )
+
+}
+export -f apis
+
+api-url() {
+    api_id="$1"
+    stage="$2"
+    echo "https://$api_id.execute-api.$AWS_REGION.amazonaws.com/$stage"
 }
 
+# TODO: write file to STDOUT
+#api-stage-schema() {
+#aws apigateway get-export \
+#--rest-api-id "$api_id" \
+#--stage-name "$stage_name" \
+#--export-type "oas30"  outfile.json
+
+#- | jq
+#}
+
 apig-custom-domains() {
-    aws --output json apigateway get-domain-names | jq -c '.items[] | {
+    res=$(aws --output json apigateway get-domain-names | jq -c '.items[] | {
         domainName,
         type: (.endpointConfiguration.types | join(",")),
         target: (
@@ -243,10 +288,32 @@ apig-custom-domains() {
                 "unknown type"
             end
         ),
-    }'
+    }')
 
-    # TODO: Add apiId from command below to output
-    #aws --output json apigateway get-base-path-mappings --domain-name 'storybook.osfin.ca' | jq '
-    #.items[]
-    #'
+    concurrency=32
+
+    task() {
+        obj="$1"
+        domain_name=$(echo "$obj" | jq -r '.domainName')
+        api_deets=$(aws --output json apigateway get-base-path-mappings \
+            --domain-name "$domain_name" | jq '.items[] ')
+        line=$(jq -c -n --argjson obj "$obj" --argjson api_deets "$api_deets" '$obj + $api_deets')
+        echo "$line"
+    }
+
+    (
+        pids=()
+        while IFS= read -r obj; do
+            ((i = i % concurrency)) # Exits with i. Can't exit on first error
+            ((i++ == 0)) && wait
+            task "$obj" &
+            pids+=($!)
+        done <<<"$res"
+
+        # Wait for all backgrounded tasks
+        for pid in "${pids[@]}"; do
+            wait "$pid"
+        done
+    )
 }
+export -f apig-custom-domains
