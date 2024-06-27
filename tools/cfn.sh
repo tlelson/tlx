@@ -72,11 +72,18 @@ cfn-resources() {
     stacks=$(aws --output json cloudformation list-stacks | jq -r '.StackSummaries[] | select(.StackStatus != "DELETE_COMPLETE") | .StackName')
 
     (
+        pids=()
         for stack_name in ${stacks}; do
             ((i = i % concurrency)) # Exits with i. Can't exit on first error
             ((i++ == 0)) && wait
             #echo "${stack_name}" &
             task "${stack_name}" &
+            pids+=($!)
+        done
+
+        # Wait for all backgrounded tasks
+        for pid in "${pids[@]}"; do
+            wait "$pid"
         done
     )
 
