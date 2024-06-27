@@ -233,18 +233,19 @@ apis() {
     }
 
     (
-        pids=()
+        #pids=()
         while IFS= read -r obj; do
             ((i = i % concurrency)) # Exits with i. Can't exit on first error
             ((i++ == 0)) && wait
             task "$obj" &
-            pids+=($!)
+            #pids+=($!)
         done <<<"$res"
 
+        # NOTE: Can't do this and pipe
         # Wait for all backgrounded tasks
-        for pid in "${pids[@]}"; do
-            wait "$pid"
-        done
+        #for pid in "${pids[@]}"; do
+        #wait "$pid"
+        #done
     )
 
 }
