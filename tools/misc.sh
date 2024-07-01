@@ -85,7 +85,7 @@ enis() {
         return 0 # Exit the function after printing help
     fi
 
-    aws --output json ec2 describe-network-interfaces | tee /tmp/enis.json | jq -c '[.NetworkInterfaces[] |
+    aws --output json ec2 describe-network-interfaces | jq -c '[.NetworkInterfaces[] |
         {NetworkInterfaceId, InterfaceType, PrivateIpAddress, SubnetId,
         PublicIP: [.. | .PublicIp?] | map(select(. != null)) | unique |.[0] ,
         Description,
@@ -252,6 +252,18 @@ apis() {
 export -f apis
 
 api-url() {
+    help="URL to curl. Provide api id and stage. Use $(apis)."
+
+    if [ -z "$1" ]; then
+        echo "$help"
+        return 1
+    fi
+
+    if [ -z "$2" ]; then
+        echo "$help"
+        return 1
+    fi
+
     api_id="$1"
     stage="$2"
     echo "https://$api_id.execute-api.$AWS_REGION.amazonaws.com/$stage"
