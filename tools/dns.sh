@@ -6,6 +6,20 @@ alias record-sets-full='aws --output json route53 list-resource-record-sets --ho
 
 # TODO: Make this table-able
 record-sets() {
+    local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
+
+    Optional Arguments:
+    hosted-zone-name    Filter by hosted zone name.
+
+    Options:
+    --help              Display this help message"
+
+    # Check if the '--help' flag is present
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0 # Exit the function after printing help
+    fi
+
     if [ "$#" -ne 0 ]; then
         hz="$1"
         cmd="aws --output json route53 list-hosted-zones | jq --arg hz \"$hz\" '.HostedZones[] \
