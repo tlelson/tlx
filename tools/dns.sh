@@ -1,7 +1,44 @@
 #!/usr/bin/env bash
 
-alias hosted-zones="aws --output json route53 list-hosted-zones | tee /tmp/hz.json | jq -cr '.HostedZones[] | {
-    Id, Name, Public: (.Config.PrivateZone | not), RecordSets: .ResourceRecordSetCount}' "
+hosted_zones() {
+    if [[ "$1" == "--help" ]]; then
+        echo "Usage: hosted_zones"
+        echo "Lists AWS Route 53 hosted zones along with associated VPCs (if any)."
+        return 0
+    fi
+
+    concurrency=32
+
+    task() {
+        hostedZone="$1"
+
+        # Extract hosted zone ID
+        hostedZoneId=$(echo "$hostedZone" | jq -r .Id)
+
+        # Fetch VPCs associated with the hosted zone
+        vpcs=$(aws --output json route53 get-hosted-zone --id "$hostedZoneId" |
+            jq -c '[.VPCs[] | "\(.VPCId) (\(.VPCRegion))"] | join(",")')
+
+        # Append VPCs to the hosted zone JSON object
+        echo "$hostedZone" | jq -c --argjson vpcs "$vpcs" '. + {VPCs: $vpcs}'
+
+    }
+
+    (
+        # Fetch hosted zones and store in temporary file
+        aws --output json route53 list-hosted-zones | jq -cr '.HostedZones[] | {
+        Id, Name, Public: (.Config.PrivateZone | not), RecordSets: .ResourceRecordSetCount }' | while read -r hostedZone; do
+            ((i = i % concurrency)) # Exits with i. Can't exit on first error
+            ((i++ == 0)) && wait
+            task "$hostedZone" &
+        done
+    )
+}
+export -f hosted_zones
+
+# Add this to display help message when needed
+alias hosted-zones="hosted_zones"
+
 alias record-sets-full='aws --output json route53 list-resource-record-sets --hosted-zone-id '
 
 # TODO: Make this table-able
