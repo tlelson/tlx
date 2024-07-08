@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+alias codepipeline='echo "CodePipeline tools are prefixed with \`cp-\`"'
+
 cp-list() {
     aws --output json codepipeline list-pipelines | jq -r '.pipelines[].name'
 }
@@ -10,7 +12,6 @@ cp-start() {
 export -f cp-start
 
 # TODO:
-#   - Allow no arguments for all pipelines and their status (change to cp-status)
 #   - Show Source commits of the execution at each stage
 cp-state() {
     local help_text="Usage: ${FUNCNAME[0]} [options] [positional Args] [Optional Args]
@@ -26,6 +27,13 @@ cp-state() {
 
     Optional Arguments
     stage_name      StageName to restrict output to. e.g 'Dev'
+
+    Examples:
+    ${FUNCNAME[0]} \$p| jtbl
+    ${FUNCNAME[0]} \$p | jq -c '.stages[] | {
+        stageName, status, pipelineExecutionId, time
+    }' | jtbl
+
     "
 
     # TODO: For each executionId (at each stage, get the Source version of each)
