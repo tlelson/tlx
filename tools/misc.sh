@@ -28,11 +28,13 @@ security-group-rules() {
     fi
 
     # Execute the constructed command string
-    eval "$cmd" | jq '.SecurityGroupRules'
-
-    # TODO: return like this but add target (either CidrIpv4 or Security group)
-    #security-group-rules | jq -c '.[] | {GroupId, IsEgress, Proto: .IpProtocol, From: .FromPort, To: .To
-    #Port?}' | jtbl
+    eval "$cmd" | jq -c '.SecurityGroupRules[] | {
+            GroupId,
+            Direction: (if .IsEgress then "Out" else "In" end),
+            Proto: .IpProtocol,
+            From: .FromPort, To: .ToPort?,
+            Target: (.CidrIpv4 // .GroupId)
+        }'
 
 }
 export -f security-group-rules
@@ -115,7 +117,10 @@ nacls() {
         aws --output json ec2 describe-network-acls \
             --query 'NetworkAcls[].{Entries: Entries}' \
             --filters "Name=association.subnet-id,Values=$1" | jq '[.[].Entries[] | {
-                CidrBlock, Egress, PortRange: "\(.PortRange.From) - \(.PortRange.To)", Protocol, RuleAction, RuleNumber
+                CidrBlock,
+                Direction: (if .Egress then "Out" else "In" end),
+                PortRange: "\(.PortRange.From) - \(.PortRange.To)", Protocol, Action: .RuleAction,
+                Priority: .RuleNumber
             }] | sort_by(.RuleNumber)'
     else
         aws --output json ec2 describe-network-acls \
@@ -252,7 +257,7 @@ apis() {
 export -f apis
 
 api-url() {
-    help="URL to curl. Provide api id and stage. Use $(apis)."
+    help="URL to curl. Provide api id and stage. Use command 'apis'."
 
     if [ -z "$1" ]; then
         echo "$help"
@@ -279,7 +284,30 @@ api-url() {
 #- | jq
 #}
 
-apig-custom-domains() {
+api-stage() {
+    help="URL to curl. Provide api id and stage. Use command 'apis'."
+
+    if [ -z "$1" ]; then
+        echo "$help"
+        return 1
+    fi
+
+    if [ -z "$2" ]; then
+        echo "$help"
+        return 1
+    fi
+
+    api_id="$1"
+    stage="$2"
+
+    api_id="53ahy0oiuf"
+    stage="v1"
+
+    aws apigateway get-stage --rest-api-id $api_id \
+        --stage-name $stage | jq
+}
+
+api-custom-domains() {
     res=$(aws --output json apigateway get-domain-names | jq -c '.items[] | {
         domainName,
         type: (.endpointConfiguration.types | join(",")),
@@ -329,4 +357,47 @@ apig-custom-domains() {
         done
     )
 }
-export -f apig-custom-domains
+export -f api-custom-domains
+
+waf-acls() {
+    aws wafv2 list-web-acls --scope REGIONAL | jq '.WebACLs[] | {
+        Name, Id, Description, ARN,
+    }'
+
+}
+
+waf-acl-resources() {
+    local help_text="Usage: ${FUNCNAME[0]} [Arguments] [options]
+    List resources associated with a Web ACL.
+
+    Returns jsonlines.
+
+    Arguments:
+    web_acl_id      Use 'waf-acls' to find the Id.
+
+    Options:
+    --help          Display this help message
+
+    Examples:
+    ${FUNCNAME[0]} | jtbl
+    "
+
+    if [ -z "$1" ]; then
+        echo "$help"
+        return 1
+    fi
+
+    id='9bf51460-c919-464a-ab86-fdc94104a11f'
+    arn=$(aws wafv2 list-web-acls --scope REGIONAL | jq -r \
+        --arg id "$id" '.WebACLs[] | select(.Id==$id) | .ARN')
+    echo $arn
+
+    aws wafv2 list-resources-for-web-acl --web-acl-arn "$arn" | jq
+}
+
+waf-web-acl-delete-association() {
+    arn=''
+
+    aws wafv2 delete-webacl-association \
+        --resource-arn "$arn"
+}
