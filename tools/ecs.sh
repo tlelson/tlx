@@ -102,3 +102,65 @@ ecs-shell() {
         --interactive
 }
 export -f ecs-shell
+
+ecr() {
+    local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
+    List repositories if no repository name is provided. Otherwise describe the repository.
+
+    Optional Arguments:
+    repository_name
+
+    Options:
+    --help       Display this help message"
+
+    # Check if the '--help' flag is present
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0 # Exit the function after printing help
+    fi
+    if [ -n "$1" ]; then
+        aws --output json ecr describe-repositories | jq --arg rn "$1" '.repositories[] |
+            select(.repositoryName==$rn)'
+    else
+        aws --output json ecr describe-repositories | jq -r '.repositories[].repositoryName'
+    fi
+}
+
+ecr-images() {
+    local help_text="Usage: ${FUNCNAME[0]} [Arguments] [Optional Arguments] [options]
+    Returns jsonlines.
+
+    Arguments:
+    repository_name
+
+    Optional Arguments:
+    count                   Default to latest 10 images.
+
+    Options:
+    --help                  Display this help message
+
+    Examples:
+    ${FUNCNAME[0]} repo-name | jtbl
+    "
+
+    max_items=10
+
+    if [ -z "$1" ]; then
+        echo "$help_text"
+        return 1
+    fi
+
+    if [ -n "$2" ]; then
+        max_items="$2"
+    fi
+
+    aws --output json ecr describe-images --repository-name "$1" \
+        --max-items "$max_items" | jq -c '
+    .imageDetails | sort_by(.imagePushedAt) | reverse | .[] | {
+        Tags: (if (.imageTags | length) == 0 then null else (.imageTags | join(",")) end),
+        PushedAt: .imagePushedAt | sub(":[0-9]{2}\\.[0-9]{6}"; ""),
+        LastPulledAt: .lastRecordedPullTime | sub(":[0-9]{2}\\.[0-9]{6}"; ""),
+        Digest: .imageDigest,
+    }'
+
+}
