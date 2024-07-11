@@ -67,6 +67,18 @@ alias awsenv='bash --rcfile ${TLXPATH}/tools/rcfile'
 
 Otherwise source the `.tools/rcfile` in your own way.
 
+### examples
+
+#### Find differences to be deployed by a Cope-Pipeline deployment
+
+Find your executionId's to compare somehow.  Maybe by using `cp-state $p` to look at different stages.
+
+Maybe you want to look at previous executions: `cp-execs $p 20 | grep -e 'Prod_Environment' | jtbl` to see when Prod was last deployed.
+
+1. `cp-state $p` to show pipeline executionId between your stages (blocked by an approval)
+2. `cp-execs $p 30 | grep "exId1\|exId2" | jtbl` to get the Source hash.
+3. git log diff1..diff2
+
 ## Module Summary
 
 Import these in a python program or shell.

@@ -365,3 +365,12 @@ cp-update() {
     aws codepipeline update-pipeline --cli-input-yaml "file://$1" >/dev/null
 }
 export -f cp-update
+
+cp-execs() {
+    if [[ "$*" == *"--help"* ]]; then
+        code-pipeline-executions --help
+        return 0
+    fi
+    code-pipeline-executions "$@" | jq -c '.[]'
+}
+export -f cp-execs
