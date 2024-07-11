@@ -322,3 +322,99 @@ stack-delete() {
     eval "${cmd}"
 }
 export -f stack-delete
+
+stack-change-set() {
+    local help_text="Usage: ${FUNCNAME[0]} [Arguments] [OPTIONAL_ARGS] [options]
+    List change sets for a stack or show details for a specific change set.
+
+    If '--create' flag is used, change_set_name, template_file, and parameters_file are required.
+
+    Arguments:
+    stack_name
+
+    Optional Arguments:
+    change_set_name
+    template_file
+    parameters_file         Use 'stack-params' to get current params
+
+    Options:
+    --create                Create a new change set
+    --help                  Display this help message
+
+    Examples:
+    ${FUNCNAME[0]} stack_name | jtbl
+    ${FUNCNAME[0]} stack_name --create change_set_name template_file parameters_file
+    "
+
+    # Initialize variables
+    local stack_name=""
+    local change_set_name=""
+    local template_file=""
+    local parameters_file=""
+    local create_flag=0
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        --help)
+            echo "$help_text"
+            return 0
+            ;;
+        --create)
+            create_flag=1
+            shift
+            ;;
+        *)
+            if [[ -z "$stack_name" ]]; then
+                stack_name="$1"
+            elif [[ -z "$change_set_name" ]]; then
+                change_set_name="$1"
+            elif [[ -z "$template_file" ]]; then
+                template_file="$1"
+            elif [[ -z "$parameters_file" ]]; then
+                parameters_file="$1"
+            else
+                echo "Error: Unexpected argument '$1'"
+                echo "$help_text"
+                return 1
+            fi
+            shift
+            ;;
+        esac
+    done
+
+    # Display help if required arguments are missing
+    if [[ -z "$stack_name" ]]; then
+        echo "$help_text"
+        return 1
+    fi
+
+    if [[ $create_flag -eq 1 ]]; then
+        # Check if required arguments for creation are provided
+        if [[ -z "$change_set_name" || -z "$template_file" || -z "$parameters_file" ]]; then
+            echo "Error: change_set_name, template_file, and parameters_file are required when using --create."
+            echo "$help_text"
+            return 1
+        fi
+
+        aws --output json cloudformation create-change-set \
+            --stack-name "$stack_name" \
+            --template-body file://"$template_file" \
+            --parameters file://"$parameters_file" \
+            --change-set-name "$change_set_name" \
+            --capabilities CAPABILITY_IAM >/dev/null
+
+        echo "Change set '$change_set_name' created for stack '$stack_name'."
+    elif [[ -n "$change_set_name" ]]; then
+        aws --output json cloudformation describe-change-set \
+            --change-set-name "$change_set_name" \
+            --stack-name "${stack_name}" | jq
+    else
+        aws --output json cloudformation list-change-sets \
+            --stack-name "${stack_name}" | jq '.Summaries[] | {
+            Name: .ChangeSetName, ExecutionStatus, Status,
+            CreationTime: .CreationTime | sub(":[0-9]{2}\\.[0-9]{6}";""),
+        }'
+    fi
+}
+export -f stack-change-set
