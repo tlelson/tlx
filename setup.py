@@ -36,7 +36,7 @@ setup(
         # This is the only tool that is used outside of an aws account context.
         "tools/aws-list-accounts",
         "tools/stack",
-        "tools/cfn",
+        "tools/cfn.sh",
     ],
     data_files=[
         'version.txt',

@@ -2,6 +2,15 @@
 
 Tools for working with AWS.
 
+## Try before you Buy
+
+_you'll need [nix](https://nixos.org/download/)_
+
+```bash
+nix shell github:tlelson/tlx --command aws-list-accounts
+
+```
+
 ## Install
 
 This package is not distributed through pypi.  Clone the repository and install it locally.
