@@ -34,6 +34,7 @@ setup(
     },
     scripts=[
         # This is the only tool that is used outside of an aws account context.
+        "tools/checkhealth",
         "tools/aws-list-accounts",
         "tools/stack",
         "tools/cfn.sh",
