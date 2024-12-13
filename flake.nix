@@ -50,9 +50,12 @@
             # Non Python dependencies
             # Build and/or run-time dependencies that need to be compiled for the host machine
             awscli2 # Although this is written in python it isn't a library. Its from nixpkgs
+            gnused
+            unixtools.column
+            jq
           ];
 
-          #makeWrapperArgs = [ "stack" ];
+          # TODO: make a function to itterate over all shell files
           postInstall = ''
             wrapProgram $out/bin/checkhealth \
                 --set PATH ${pkgs.python312Packages.python.interpreter}/bin:$PATH \
