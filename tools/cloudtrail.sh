@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-cloudtrail-query() {
+query() {
     # Define default values for the optional parameters
     local start=""
     local end=""
@@ -155,9 +155,8 @@ cloudtrail-query() {
 
     return 0
 }
-export -f cloudtrail-query
 
-cloudtrail-event() {
+event() {
     local help_text="Usage: ${FUNCNAME[0]} [ARGS] [options]
 
     Arguments:
@@ -191,4 +190,26 @@ cloudtrail-event() {
     fi
 
 }
-export -f cloudtrail-event
+
+cloudtrail() {
+    local command="$1"
+    shift
+    case "$command" in
+        query) query "$@" ;;
+        event) event "$@" ;;
+        --help|-h)
+            echo "Usage: cloudtrail <command> [options]"
+            echo "Commands:"
+            echo "  query   Query CloudTrail logs"
+            echo "  event   Get details for a specific event"
+            return 0
+            ;;
+        *)
+            echo "Unknown command: $command"
+            echo "Run 'cloudtrail --help' for a list of commands."
+            return 1
+            ;;
+    esac
+}
+
+cloudtrail "$@"

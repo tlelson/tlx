@@ -39,6 +39,7 @@ setup(
         "tools/stack",
         "tools/cfn",
         "tools/dns",
+        "tools/cloudtrail.sh",  # Added new executable
     ],
     data_files=[
         'version.txt',
