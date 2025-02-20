@@ -37,7 +37,7 @@ setup(
         "tools/checkhealth",
         "tools/aws-list-accounts",
         "tools/stack",
-        "tools/cfn.sh",
+        "tools/cfn",
     ],
     data_files=[
         'version.txt',

@@ -374,3 +374,5 @@ stack() {
         ;;
     esac
 }
+
+stack "$@"

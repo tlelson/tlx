@@ -97,14 +97,14 @@ cfn() {
     shift
 
     case "$command" in
-    events)
+    exports)
         exports "$@"
         ;;
-    failed)
+    resources)
         resources "$@"
         ;;
     --help | -h)
-        echo "Usage: stack <command> [options]"
+        echo "Usage: cfn <command> [options]"
         echo "Commands:"
         echo "  exports      Show stack events"
         echo "  resources    Show failed resources in a stack"
