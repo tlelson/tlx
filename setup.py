@@ -38,6 +38,7 @@ setup(
         "tools/aws-list-accounts",
         "tools/stack",
         "tools/cfn",
+        "tools/dns.sh",
     ],
     data_files=[
         'version.txt',

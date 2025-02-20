@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 
 hosted_zones() {
-    if [[ "$1" == "--help" ]]; then
-        echo "Usage: hosted_zones"
-        echo "Lists AWS Route 53 hosted zones along with associated VPCs (if any)."
+    local help_text="Usage: hosted-zones [--help]
+Lists AWS Route 53 hosted zones along with associated VPCs (if any).
+Output: JSON lines with zone info plus any associated VPCs."
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
         return 0
     fi
 
@@ -36,25 +38,13 @@ hosted_zones() {
 }
 export -f hosted_zones
 
-# Add this to display help message when needed
-alias hosted-zones="hosted_zones"
-
-alias record-sets-full='aws --output json route53 list-resource-record-sets --hosted-zone-id '
-
-# TODO: Make this table-able
-record-sets() {
-    local help_text="Usage: ${FUNCNAME[0]} [OPTIONAL_ARGS] [options]
-
-    Optional Arguments:
-    hosted-zone-name    Filter by hosted zone name.
-
-    Options:
-    --help              Display this help message"
-
-    # Check if the '--help' flag is present
+record_sets() {
+    local help_text="Usage: record-sets [hosted-zone-name] [--help]
+Lists record sets for the specified hosted zone name or all zones if none provided.
+Output: JSON lines with record set details."
     if [[ "$*" == *"--help"* ]]; then
         echo "$help_text"
-        return 0 # Exit the function after printing help
+        return 0
     fi
 
     if [ "$#" -ne 0 ]; then
@@ -70,16 +60,79 @@ record-sets() {
     '
     #| select(.Type | IN("SOA", "NS") | not)
 }
-export -f record-sets
+export -f record_sets
 
-alias r53-profiles='aws route53profiles list-profiles'
-alias r53-profile-associations='aws route53profiles list-profile-associations'
+record_sets_full() {
+    local help_text="Usage: record-sets-full [HOSTED_ZONE_ID] [--help]
+Lists all record sets for the given hosted zone ID.
+Output: JSON response from AWS."
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
+    aws --output json route53 list-resource-record-sets --hosted-zone-id "$@"
+}
 
-r53-profile-resource-associations() {
+r53_profiles() {
+    local help_text="Usage: r53-profiles [--help]
+Lists Route53 profiles via AWS CLI.
+Output: JSON response from AWS."
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
+    aws route53profiles list-profiles
+}
+
+r53_profile_associations() {
+    local help_text="Usage: r53-profile-associations [--help]
+Lists Route53 profile associations via AWS CLI.
+Output: JSON response from AWS."
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
+    aws route53profiles list-profile-associations
+}
+
+r53_profile_resource_associations() {
+    local help_text="Usage: r53-profile-resource-associations <PROFILE_ID> [--help]
+Lists Route53 profile resource associations for the provided PROFILE_ID.
+Output: JSON response from AWS."
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
     if [ -z "$1" ]; then
         echo "Must provide a profile ID as an argument"
         return 1
     fi
     aws route53profiles list-profile-resource-associations --profile-id "$1"
 }
-export -f r53-profile-resource-associations
+export -f r53_profile_resource_associations
+
+dns() {
+    local command="$1"
+    shift
+    case "$command" in
+        hosted-zones) hosted_zones "$@" ;;
+        record-sets) record_sets "$@" ;;
+        record-sets-full) record_sets_full "$@" ;;
+        r53-profiles) r53_profiles "$@" ;;
+        r53-profile-associations) r53_profile_associations "$@" ;;
+        r53-profile-resource-associations) r53_profile_resource_associations "$@" ;;
+        *)
+            echo "Usage: dns <command> [options]"
+            echo "Commands:"
+            echo "  hosted-zones"
+            echo "  record-sets"
+            echo "  record-sets-full"
+            echo "  r53-profiles"
+            echo "  r53-profile-associations"
+            echo "  r53-profile-resource-associations"
+            return 1
+            ;;
+    esac
+}
+
+dns "$@"
