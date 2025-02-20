@@ -7,23 +7,24 @@
   };
 
   outputs =
-    { self
-    , nixpkgs
-    , utils
-    , ...
-    }:
-    utils.lib.eachDefaultSystem (system:
-    let
-      pkgs = import nixpkgs {
-        inherit system;
-      };
-      pythonPkgs = pkgs.python312Packages;
-      #pyproject = pkgs.lib.importTOML ./pyproject.toml;
-    in
     {
-      # Executed by `nix build .`
-      packages.default = pythonPkgs.buildPythonPackage
-        {
+      self,
+      nixpkgs,
+      utils,
+      ...
+    }:
+    utils.lib.eachDefaultSystem (
+      system:
+      let
+        pkgs = import nixpkgs {
+          inherit system;
+        };
+        pythonPkgs = pkgs.python312Packages;
+      in
+      #pyproject = pkgs.lib.importTOML ./pyproject.toml;
+      {
+        # Executed by `nix build .`
+        packages.default = pythonPkgs.buildPythonPackage {
           #pname = pyproject.project.name;
           #inherit (pyproject.project) version;
           pname = "tlx";
@@ -55,34 +56,30 @@
             jq
           ];
 
-          # TODO: make a function to itterate over all shell files
-          postInstall = ''
-            wrapProgram $out/bin/checkhealth \
-                --set PATH ${pkgs.python312Packages.python.interpreter}/bin:$PATH \
-                --set SHELL ${pkgs.bash}/bin/bash
-          '';
         };
 
-      # Used by `nix develop`
-      devShells.default = pkgs.mkShell
-        {
+        # Used by `nix develop`
+        devShells.default = pkgs.mkShell {
           inputsFrom = [ self.packages.${system}.default ];
-          packages = with pkgs; [
-            python312
-            awscli2
-            pyright
-          ] ++ (with pkgs.python312Packages; [
-            setuptools
-            ipython
-            mypy
-            mypy-boto3-cloudformation
-            mypy-boto3-codepipeline
-            mypy-boto3-iam
-            mypy-boto3-logs
-            mypy-boto3-organizations
-            mypy-boto3-s3
-            mypy-boto3-secretsmanager
-          ]);
+          packages =
+            with pkgs;
+            [
+              python312
+              awscli2
+              pyright
+            ]
+            ++ (with pkgs.python312Packages; [
+              setuptools
+              ipython
+              mypy
+              mypy-boto3-cloudformation
+              mypy-boto3-codepipeline
+              mypy-boto3-iam
+              mypy-boto3-logs
+              mypy-boto3-organizations
+              mypy-boto3-s3
+              mypy-boto3-secretsmanager
+            ]);
           #shellHook = ''
           ## NOTE: Breaks import of above modules
           ## Needed because urllib appears twice on the Python path and awscli needs an
@@ -91,5 +88,6 @@
           #export PYTHONPATH=""
           #'';
         };
-    });
+      }
+    );
 }
