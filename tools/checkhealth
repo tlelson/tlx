@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-
-echo "python --version: $(python --version)"
-echo "which python: $(which python)"
-echo "PYTHONPATH: ${PYTHONPATH}"
-echo "PATH: ${PATH}"
