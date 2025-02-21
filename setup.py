@@ -39,6 +39,7 @@ setup(
         "tools/dns",
         "tools/cloudtrail",
         "tools/apig",
+        "tools/lambda",
     ],
     data_files=[
         'version.txt',
