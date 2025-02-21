@@ -38,6 +38,7 @@ setup(
         "tools/cfn",
         "tools/dns",
         "tools/cloudtrail",
+        "tools/apig",
     ],
     data_files=[
         'version.txt',
