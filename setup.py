@@ -40,6 +40,7 @@ setup(
         "tools/cloudtrail",
         "tools/apig",
         "tools/lambda",
+        "tools/test_import.py",
     ],
     data_files=[
         'version.txt',
