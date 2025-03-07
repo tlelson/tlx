@@ -30,6 +30,7 @@ setup(
             'get-aws-creds=tlx.util.cli_apps.get_aws_creds:main',
             'dynamo-batch-write=tlx.dynamodb.cli_apps.dynamodb_batch_write:dbw',
             'dynamo-clear-table=tlx.dynamodb.cli_apps.dynamodb_clear_table:dct',
+            'test_import=tlx.test_import:main',
         ],
     },
     scripts=[
@@ -40,7 +41,6 @@ setup(
         "tools/cloudtrail",
         "tools/apig",
         "tools/lambda",
-        "tools/test_import.py",
     ],
     data_files=[
         'version.txt',

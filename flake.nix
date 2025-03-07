@@ -37,17 +37,16 @@
           #build-system = [ pythonPkgs.hatchling ];
           build-system = [ pythonPkgs.setuptools ];
 
-          dependencies = with pythonPkgs; [
-            # Python dependencies
+          propagatedBuildInputs = with pythonPkgs; [
             boto3
             click
           ];
 
-          nativeBuidInputs = with pkgs; [
+          nativeBuildInputs = with pkgs; [
             makeWrapper # provides wrapProgram
           ];
 
-          buidInputs = with pkgs; [
+          buildInputs = with pkgs; [
             # Non Python dependencies
             # Build and/or run-time dependencies that need to be compiled for the host machine
             awscli2 # Although this is written in python it isn't a library. Its from nixpkgs
