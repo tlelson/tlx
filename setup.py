@@ -41,6 +41,7 @@ setup(
         "tools/cloudtrail",
         "tools/apig",
         "tools/lambda",
+        "tools/get-creds",
     ],
     data_files=[
         'version.txt',

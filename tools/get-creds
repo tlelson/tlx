@@ -1,0 +1,145 @@
+#!/usr/bin/env bash
+
+get_creds() {
+    local help_text="Usage: ${FUNCNAME[0]} [options]
+    Outputs AWS environment variables to authenticate another shell session.
+
+    Options:
+    --help           Display this help message
+    --profile NAME   Use the specified AWS profile (default: uses AWS_PROFILE or 'default')
+
+    Output:
+    AWS environment variables that can be sourced in another shell
+
+    Examples:
+    $(basename "$0") | source
+    eval \$($(basename "$0"))
+    $(basename "$0") --profile my-profile | source
+    "
+
+    local profile=""
+    local profile_set=false
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        --help)
+            echo "$help_text"
+            return 0
+            ;;
+        --profile)
+            profile="$2"
+            profile_set=true
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            echo "$help_text" >&2
+            return 1
+            ;;
+        esac
+    done
+
+    # If the profile was not explicitly set by the user, then use environment variables
+    if [ "$profile_set" = false ]; then
+        if [ -n "$AWS_PROFILE" ]; then
+            profile="$AWS_PROFILE"
+        elif [ -n "$AWS_DEFAULT_PROFILE" ]; then
+            profile="$AWS_DEFAULT_PROFILE"
+        else
+            profile="default"
+        fi
+    fi
+
+    # Check for existing credentials in environment variables
+    if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$AWS_SECRET_ACCESS_KEY" ]; then
+        echo "# Using credentials from environment variables" >&2
+
+        echo "export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
+        echo "export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
+
+        # Only export session token if it exists
+        if [ -n "$AWS_SESSION_TOKEN" ]; then
+            echo "export AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN"
+            echo "export AWS_SECURITY_TOKEN=$AWS_SESSION_TOKEN"
+        fi
+
+        return 0
+    fi
+
+    # Check for existing session tokens in credentials file
+    local credentials_file="$HOME/.aws/credentials"
+    if [ -f "$credentials_file" ]; then
+        # Use awk to extract credentials for the specified profile
+        local aws_access_key_id=$(awk -F "=" -v profile="[$profile]" '$0==profile {flag=1; next} /^\[.*\]/{flag=0} flag && /aws_access_key_id/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}' "$credentials_file")
+        local aws_secret_access_key=$(awk -F "=" -v profile="[$profile]" '$0==profile {flag=1; next} /^\[.*\]/{flag=0} flag && /aws_secret_access_key/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}' "$credentials_file")
+        local aws_session_token=$(awk -F "=" -v profile="[$profile]" '$0==profile {flag=1; next} /^\[.*\]/{flag=0} flag && /aws_session_token/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}' "$credentials_file")
+
+        # If we have all credentials including a session token, use those
+        if [ -n "$aws_access_key_id" ] && [ -n "$aws_secret_access_key" ] && [ -n "$aws_session_token" ]; then
+            echo "# Using session token from AWS credentials file for profile: $profile" >&2
+
+            echo "export AWS_ACCESS_KEY_ID=$aws_access_key_id"
+            echo "export AWS_SECRET_ACCESS_KEY=$aws_secret_access_key"
+            echo "export AWS_SESSION_TOKEN=$aws_session_token"
+            echo "export AWS_SECURITY_TOKEN=$aws_session_token"
+
+            return 0
+        fi
+    fi
+
+    # No existing tokens found, get new ones
+    echo "# Getting new session token from AWS STS" >&2
+
+    # Get temporary credentials using the AWS STS module
+    local creds
+    creds=$(aws sts get-session-token --output json --profile "$profile" 2>/dev/null)
+
+    if [ $? -ne 0 ]; then
+        echo "Error obtaining credentials from AWS STS." >&2
+        echo "This could be because you're already using session credentials." >&2
+
+        # Try to get caller identity to verify credentials
+        local identity
+        identity=$(aws sts get-caller-identity --output json --profile "$profile" 2>/dev/null)
+
+        if [ $? -eq 0 ]; then
+            # We have valid credentials but can't get a session token
+            # This is likely because we're already using temporary credentials
+            local current_profile="$profile"
+            if [ -n "$AWS_PROFILE" ]; then
+                current_profile="$AWS_PROFILE"
+            fi
+
+            echo "You appear to have valid credentials for profile: $current_profile" >&2
+
+            # Try to use the AWS CLI to get the current credentials
+            local config_creds
+            config_creds=$(aws configure export --profile "$profile" 2>/dev/null)
+
+            if [ $? -eq 0 ]; then
+                # Parse the JSON to extract credentials
+                echo "export AWS_ACCESS_KEY_ID=$(echo "$config_creds" | jq -r '.AccessKeyId')"
+                echo "export AWS_SECRET_ACCESS_KEY=$(echo "$config_creds" | jq -r '.SecretAccessKey')"
+
+                local token=$(echo "$config_creds" | jq -r '.SessionToken')
+                if [ "$token" != "null" ]; then
+                    echo "export AWS_SESSION_TOKEN=$token"
+                    echo "export AWS_SECURITY_TOKEN=$token"
+                fi
+
+                return 0
+            fi
+        fi
+
+        return 1
+    fi
+
+    # Extract and format the credentials for export
+    echo "export AWS_ACCESS_KEY_ID=$(echo "$creds" | jq -r '.Credentials.AccessKeyId')"
+    echo "export AWS_SECRET_ACCESS_KEY=$(echo "$creds" | jq -r '.Credentials.SecretAccessKey')"
+    echo "export AWS_SESSION_TOKEN=$(echo "$creds" | jq -r '.Credentials.SessionToken')"
+    echo "export AWS_SECURITY_TOKEN=$(echo "$creds" | jq -r '.Credentials.SessionToken')"
+}
+
+get_creds "$@"
