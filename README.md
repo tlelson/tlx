@@ -16,7 +16,7 @@ nix shell github:tlelson/tlx --command aws-list-accounts
 This package is not distributed through pypi.  Clone the repository and install it locally.
 
 ```bash
-pip install -e .
+pip install git+https://github.com/tlelson/tlx.git
 ```
 
 ## CLI apps
@@ -103,3 +103,22 @@ Import these in a python program or shell.
 - [Utilities](tlx/util/README.md)
 - [Api Gateway Module](tlx/apigateway/README.md)
 - [Dynamodb Tools](tlx/dynamodb/README.md)
+
+# Build notes
+
+```sh
+nix develop
+
+poetry install  # creates a lock file
+
+poetry run test_import
+
+exit
+```
+
+Add `poetry.lock` to git and do the build
+
+```sh
+nix shell
+test_import
+```
