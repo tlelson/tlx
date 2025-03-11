@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+
+s3() {
+    local help_text="Usage: ${FUNCNAME[0]} [COMMAND] [OPTIONAL_ARGS] [options]
+    If no command is provided a list of buckets is returned.
+
+    Commands:
+    bucket-policy     Get the bucket policy for a specific bucket
+
+    Options:
+    --help           Display this help message
+
+    Output:
+    jsonlines for bucket listing or structured json for specific commands.
+
+    Examples:
+    s3 | jtbl
+    s3 bucket-policy my-bucket-name
+
+    "
+
+    # Check if the '--help' flag is present
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0 # Exit the function after printing help
+    fi
+
+    # Dispatch to subcommands or list buckets if no command
+    if [ -z "$1" ]; then
+        aws --output json s3api list-buckets | jq -c '.Buckets[] | {
+            Name, CreationDate
+        }'
+    else
+        local command="$1"
+        shift
+
+        case "$command" in
+        "bucket-policy")
+            bucket_policy "$@"
+            ;;
+        *)
+            echo "Unknown command: $command"
+            echo "$help_text"
+            return 1
+            ;;
+        esac
+    fi
+}
+
+bucket_policy() {
+    local help_text="Usage: s3 bucket-policy BUCKET_NAME [options]
+
+    Arguments:
+    BUCKET_NAME       Name of the S3 bucket to get policy for
+
+    Options:
+    --help           Display this help message
+
+    Output:
+    Structured json representing the bucket policy.
+
+    Examples:
+    s3 bucket-policy my-bucket-name
+    "
+
+    # Check if the '--help' flag is present
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    # Check if bucket name is provided
+    if [ -z "$1" ]; then
+        echo "Error: Bucket name is required"
+        echo "$help_text"
+        return 1
+    fi
+
+    aws --output json s3api get-bucket-policy --bucket "$1" | jq -r '.Policy' | jq -r fromjson
+}
+
+s3 "$@"
