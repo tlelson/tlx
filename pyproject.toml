@@ -51,3 +51,4 @@ apig = { reference = "tools/apig", type = "file" }
 lambda = { reference = "tools/lambda", type = "file" }
 get-creds = { reference = "tools/get-creds", type = "file" }
 s3 = { reference = "tools/s3", type = "file" }
+secrets = { reference = "tools/secrets", type = "file" }
