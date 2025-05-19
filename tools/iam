@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+
+# Function to display help for the subcommands
+iam_help() {
+    echo "Usage: iam <command> [options]"
+    echo ""
+    echo "Commands:"
+    echo "  role         List IAM roles or show details of a specific role."
+    echo "               Run 'iam role --help' for more details."
+    echo "  role-policy  Show details of a role policy."
+    echo "               Run 'iam role-policy --help' for more details."
+    echo "  policy       List IAM policies or show the policy document of a specific policy."
+    echo "               Run 'iam policy --help' for more details."
+    echo ""
+    echo "Options:"
+    echo "  -h, --help   Display this help message."
+}
+
+iam_role_policy() {
+    local help_text="Usage: iam role-policy <role_name> <policy_name>
+
+    Show details of a role policy. This is distinct from an attached policy. Use 'iam policy' for those.
+
+    Arguments:
+    role_name     Name of the IAM role
+    policy_name   Name of the policy
+
+    Options:
+    --help        Display this help message"
+
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [ "$#" -ne 2 ]; then
+        echo "$help_text"
+        return 1
+    fi
+
+    aws --output json iam get-role-policy --role-name "$1" --policy-name "$2" | jq
+}
+
+iam_role() {
+    local help_text="Usage: iam role [role_name]
+
+    Without a role name, a list of IAM roles is returned. If a role name is provided, details of the role are returned.
+
+    Additionally:
+    - To view attached policies, use 'iam policy'.
+    - To view role-specific inline policies, use 'iam role-policy'.
+
+    Options:
+    --help        Display this help message"
+
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [ -z "$1" ]; then
+        aws --output json iam list-roles | jq -r '.Roles[].Arn | split("/") | .[1]'
+    else
+        role_name="$1"
+
+        attached_policies=$(aws --output json iam list-attached-role-policies --role-name "$role_name" &)
+        role_policies=$(aws --output json iam list-role-policies --role-name "$role_name" | jq -cr '.PolicyNames' &)
+        get_role=$(aws --output json iam get-role --role-name "$role_name" | jq '.Role')
+
+        wait
+
+        echo "$get_role" |
+            jq --argjson rp "$role_policies" '. + {"RolePolicies": $rp}' |
+            jq ". + {AttachedPolicies: $attached_policies}"
+    fi
+}
+
+iam_policy() {
+    local help_text="Usage: iam policy [policyArn]
+
+    Without a policy ARN, a list of IAM policies is returned. If an ARN is provided, the policy document of the latest version is returned.
+
+    Arguments:
+    policyArn     ARN of the IAM policy
+
+    Options:
+    --help        Display this help message"
+
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [ -z "$1" ]; then
+        aws iam list-policies --query 'Policies[*].[PolicyName, Arn, DefaultVersionId]'
+    else
+        arn="$1"
+        versionId=$(aws --output json iam get-policy --policy-arn "$arn" --query 'Policy.DefaultVersionId' | jq -r)
+        aws --output json iam get-policy-version --policy-arn "$arn" --version-id "$versionId" --query 'PolicyVersion.Document' | jq
+    fi
+}
+
+# Dispatcher function
+iam() {
+    local command="$1"
+    shift
+
+    case "$command" in
+    role)
+        iam_role "$@"
+        ;;
+    role-policy)
+        iam_role_policy "$@"
+        ;;
+    policy)
+        iam_policy "$@"
+        ;;
+    -h | --help | '')
+        iam_help
+        ;;
+    *)
+        echo "Unknown command: $command"
+        iam_help
+        return 1
+        ;;
+    esac
+}
+
+# If the script is executed directly, pass all arguments to the dispatcher
+iam "$@"
