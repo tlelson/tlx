@@ -76,7 +76,7 @@ bucket_policy() {
         return 1
     fi
 
-    aws --output json s3api get-bucket-policy --bucket "$1" | jq -r '.Policy' | jq -r fromjson
+    aws --output json s3api get-bucket-policy --bucket "$1" | jq -r '.Policy | fromjson'
 }
 
 s3 "$@"
