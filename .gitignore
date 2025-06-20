@@ -1,5 +1,6 @@
 # Nix
 result
+.devbox
 
 # Python
 __pycache__/

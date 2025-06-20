@@ -1,0 +1,309 @@
+#!/usr/bin/env bash
+
+## EC2 Tools
+#
+# Tools for managing EC2 instances.
+
+_ec2_list() {
+    # Describes EC2 instances, showing ID, Name, State, Public IP, and Private IP.
+    local help_text="Usage: ec2 list [options]
+    Lists EC2 instances with their ID, Name, State, Public IP, and Private IP.
+
+    Returns jsonlines.
+
+    Options:
+    --help       Display this help message
+
+    Examples:
+    ec2 list | jtbl
+    "
+
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    aws --output json ec2 describe-instances | jq -c '
+        .Reservations[].Instances[] | {
+            InstanceId: .InstanceId,
+            Name: (([.Tags[]? | select(.Key=="Name") | .Value] | first) | if . == null then "" else . end),
+            InstanceType: .InstanceType,
+            State: .State.Name,
+            PublicIpAddress: (if .PublicIpAddress == null then "" else .PublicIpAddress end),
+            PrivateIpAddress: (if .PrivateIpAddress == null then "" else .PrivateIpAddress end),
+            SecurityGroupIds: [.SecurityGroups[]?.GroupId]
+        }
+    '
+}
+
+_ec2_start() {
+    # Starts an EC2 instance.
+    local help_text="Usage: ec2 start <instance-id> [options]
+    Starts the specified EC2 instance.
+
+    Arguments:
+    instance-id  The ID of the EC2 instance to start.
+
+    Options:
+    --help       Display this help message
+
+    Examples:
+    ec2 start i-0123456789abcdef0
+    "
+
+    if [[ "$1" == "--help" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+    if [[ -z "$1" ]]; then # Check for missing instance-id separately
+        echo "$help_text" # Show help if instance-id is missing
+        return 1
+    fi
+
+    local instance_id="$1"
+    aws ec2 start-instances --instance-ids "${instance_id}" > /dev/null 2>&1
+}
+
+_ec2_stop() {
+    # Stops an EC2 instance.
+    local help_text="Usage: ec2 stop <instance-id> [options]
+    Stops the specified EC2 instance.
+
+    Arguments:
+    instance-id  The ID of the EC2 instance to stop.
+
+    Options:
+    --help       Display this help message
+
+    Examples:
+    ec2 stop i-0123456789abcdef0
+    "
+
+    if [[ "$1" == "--help" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+    if [[ -z "$1" ]]; then # Check for missing instance-id separately
+        echo "$help_text" # Show help if instance-id is missing
+        return 1
+    fi
+
+    local instance_id="$1"
+    aws ec2 stop-instances --instance-ids "${instance_id}" > /dev/null 2>&1
+}
+
+_ec2_list_security_groups() {
+    # Lists security groups with their ID, Name, and Description.
+    local help_text="Usage: ec2 sg-list [options]
+    Lists security groups with their ID, Name, and Description.
+
+    Returns jsonlines.
+
+    Options:
+    --help       Display this help message
+
+    Examples:
+    ec2 sg-list | jtbl
+    "
+
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    aws --output json ec2 describe-security-groups | jq -c '.SecurityGroups[] | {GroupId, GroupName, Description}'
+}
+
+_ec2_list_security_group_rules() {
+    # Lists rules for a specific security group or all rules.
+    local help_text="Usage: ec2 sg-rules [security-group-id] [options]
+    If a security-group-id is provided, all rules for that group are returned.
+    Otherwise, all rules for all security groups are returned.
+
+    Arguments:
+    security-group-id   Optional. The ID of the security group (e.g., sg-XXXX).
+
+    Options:
+    --help              Display this help message
+
+    Examples:
+    ec2 sg-rules sg-0123456789abcdef0 | jtbl
+    ec2 sg-rules | jtbl
+    "
+
+    local sg_id=""
+
+    # Process arguments: first non-option arg is sg_id
+    for arg in "$@"; do
+        if [[ "$arg" == "--help" ]]; then
+            echo "$help_text"
+            return 0
+        elif [[ ! "$arg" == --* ]] && [[ -z "$sg_id" ]]; then
+            sg_id="$arg"
+        fi
+    done
+
+    local cmd="aws --output json ec2 describe-security-group-rules"
+    if [ -n "$sg_id" ]; then
+        cmd+=" --filters Name=group-id,Values=$sg_id"
+    fi
+
+    # Execute the constructed command string
+    # A more detailed jq filter like in misc.sh can be used if specific fields are preferred:
+    eval "$cmd" | jq -c '.SecurityGroupRules[] | {
+            GroupId,
+            Direction: (if .IsEgress == true then "Out" else "In" end),
+            Proto: .IpProtocol,
+            From: .FromPort,
+            To: .ToPort,
+            Target: (if .CidrIpv4 != null then .CidrIpv4 elif .CidrIpv6 != null then .CidrIpv6 elif .PrefixListId != null then .PrefixListId elif .ReferencedGroupInfo != null then .ReferencedGroupInfo.GroupId else null end)
+        }'
+}
+
+_ec2_sg_rule_add() {
+    # Adds a rule to a security group.
+    local help_text
+    read -r -d '' help_text <<'EOF'
+Usage: ec2 sg-rule-add <json-rule-spec> [options]
+    Adds an inbound or outbound rule to the specified security group.
+
+    Arguments:
+    json-rule-spec  A JSON string defining the rule. See examples for structure.
+                    The JSON string must be properly escaped for shell arguments,
+                    typically by enclosing it in single quotes.
+
+    Options:
+    --help          Display this help message
+
+    Examples:
+    ec2 sg-rule-add '{
+        "GroupId": "sg-0123456789abcdef0",
+        "Direction": "In",
+        "IpPermissions": [{
+            "IpProtocol": "tcp",
+            "FromPort": 22,
+            "ToPort": 22,
+            "IpRanges": [{"CidrIp": "192.168.1.100/32", "Description": "SSH access for my IP"}]
+        }]
+    }'
+
+    ec2 sg-rule-add '{
+        "GroupId": "sg-0123456789abcdef0",
+        "Direction": "Out",
+        "IpPermissions": [{
+            "IpProtocol": "-1",
+            "IpRanges": [{"CidrIp": "0.0.0.0/0", "Description": "Allow all outbound"}]
+        }]
+    }'
+EOF
+
+    if [[ "$1" == "--help" ]]; then
+        echo "${help_text}"
+        return 0
+    fi
+    if [[ -z "$1" ]]; then
+        echo "Error: JSON rule specification is missing."
+        echo "$help_text" # Show help if json-rule-spec is missing
+        return 1
+    fi
+
+    local json_rule_spec="$1"
+
+    # Check if jq is available
+    if ! command -v jq &> /dev/null; then
+        echo "Error: jq is not installed. Please install jq to use this command."
+        return 1
+    fi
+
+    # Basic validation of JSON (jq will fail if not valid)
+    if ! echo "${json_rule_spec}" | jq empty > /dev/null 2>&1; then
+        echo "Error: Invalid JSON provided."
+        echo "Attempted to parse: ${json_rule_spec}"
+        return 1
+    fi
+
+    local group_id
+    group_id=$(echo "${json_rule_spec}" | jq -r '.GroupId')
+    if [[ -z "${group_id}" || "${group_id}" == "null" ]]; then
+        echo "Error: GroupId is missing or null in JSON."
+        return 1
+    fi
+
+    local direction
+    direction=$(echo "${json_rule_spec}" | jq -r '.Direction')
+    if [[ "${direction}" != "In" && "${direction}" != "Out" ]]; then
+        echo "Error: Direction must be 'In' or 'Out'."
+        return 1
+    fi
+
+    local ip_permissions
+    ip_permissions=$(echo "${json_rule_spec}" | jq -c '.IpPermissions') # Keep as JSON array string
+     if [[ -z "${ip_permissions}" || "${ip_permissions}" == "null" || "${ip_permissions}" == "[]" ]]; then
+        echo "Error: IpPermissions is missing, null, or empty in JSON."
+        return 1
+    fi
+
+    local aws_command_action=""
+    if [[ "${direction}" == "In" ]]; then
+        aws_command_action="authorize-security-group-ingress"
+    else
+        aws_command_action="authorize-security-group-egress"
+    fi
+
+    # Construct and execute the command
+    echo "Attempting to add rule to group ${group_id}..."
+    if aws ec2 "${aws_command_action}" --group-id "${group_id}" --ip-permissions "${ip_permissions}"; then
+        echo "Successfully added rule to group ${group_id}."
+    else
+        # AWS CLI usually outputs its own errors to stderr.
+        echo "Error adding rule to group ${group_id}. Check AWS CLI output for details."
+        return 1
+    fi
+}
+
+ec2() {
+    local command="$1"
+    shift
+
+    case "$command" in
+    list)
+        _ec2_list "$@"
+        ;;
+    start)
+        _ec2_start "$1"
+        ;;
+    stop)
+        _ec2_stop "$1"
+        ;;
+    sg-list)
+        _ec2_list_security_groups "$@"
+        ;;
+    sg-rules)
+        _ec2_list_security_group_rules "$@"
+        ;;
+    sg-rule-add)
+        _ec2_sg_rule_add "$1" # Pass only the JSON string
+        ;;
+    --help | -h)
+        echo "Usage: ec2 <command> [options]"
+        echo "Commands:"
+        echo "  list         List EC2 instances"
+        echo "  start        Start an EC2 instance"
+        echo "  stop         Stop an EC2 instance"
+        echo "  sg-list      List security groups"
+        echo "  sg-rules     List security group rules"
+        echo "  sg-rule-add  Add a rule to a security group"
+        echo ""
+        echo "Run 'ec2 <command> --help' for command-specific help."
+        return 0 # Ensure help exits with 0
+        ;;
+    *)
+        echo "Unknown command: $command"
+        echo "Run 'ec2 --help' for a list of commands."
+        return 1
+        ;;
+    esac
+}
+
+# shellcheck disable=SC2068
+ec2 "$@"
