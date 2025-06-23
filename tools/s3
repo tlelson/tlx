@@ -19,10 +19,10 @@ s3() {
 
     "
 
-    # Check if the '--help' flag is present
-    if [[ "$*" == *"--help"* ]]; then
+    # If the first argument is --help, display help and exit.
+    if [[ "$1" == "--help" ]]; then
         echo "$help_text"
-        return 0 # Exit the function after printing help
+        return 0
     fi
 
     # Dispatch to subcommands or list buckets if no command
@@ -51,32 +51,88 @@ bucket_policy() {
     local help_text="Usage: s3 bucket-policy BUCKET_NAME [options]
 
     Arguments:
-    BUCKET_NAME       Name of the S3 bucket to get policy for
+    BUCKET_NAME       Name of the S3 bucket
 
     Options:
-    --help           Display this help message
+    --help                       Display this help message
+    -f, --update-from-file FILE_PATH Update the bucket policy from the specified JSON file
 
     Output:
-    Structured json representing the bucket policy.
+    Structured json representing the bucket policy (when getting) or a confirmation message (when updating).
 
     Examples:
     s3 bucket-policy my-bucket-name
-    "
+    s3 bucket-policy my-bucket-name --update-from-file ./policy.json
+    s3 bucket-policy my-bucket-name -f ./policy.json
 
-    # Check if the '--help' flag is present
-    if [[ "$*" == *"--help"* ]]; then
-        echo "$help_text"
-        return 0
-    fi
+    Example policy.json content:
+    {
+      \"Version\": \"2012-10-17\",
+      \"Statement\": [
+        {
+          \"Sid\": \"AllowRootAccountAccess\",
+          \"Effect\": \"Allow\",
+          \"Principal\": {\"AWS\": \"arn:aws:iam::ACCOUNT_NUMBER:root\"},
+          \"Action\": \"s3:GetObject\",
+          \"Resource\": \"arn:aws:s3:::my-bucket-name/*\"
+        }
+      ]
+    }
+    "
+    local bucket_name=""
+    local policy_file=""
+
+    # Parse arguments
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+            -f|--update-from-file)
+                if [ -z "$2" ]; then
+                    echo "Error: $1 requires a file path."
+                    echo "$help_text"
+                    return 1
+                fi
+                policy_file="$2"
+                shift 2
+                ;;
+            --help)
+                echo "$help_text"
+                return 0
+                ;;
+            *)
+                if [ -z "$bucket_name" ]; then
+                    bucket_name="$1"
+                    shift
+                else
+                    echo "Unknown argument: $1"
+                    echo "$help_text"
+                    return 1
+                fi
+                ;;
+        esac
+    done
 
     # Check if bucket name is provided
-    if [ -z "$1" ]; then
+    if [ -z "$bucket_name" ]; then
         echo "Error: Bucket name is required"
         echo "$help_text"
         return 1
     fi
 
-    aws --output json s3api get-bucket-policy --bucket "$1" | jq -r '.Policy | fromjson'
+    if [ -n "$policy_file" ]; then
+        if [ ! -f "$policy_file" ]; then
+            echo "Error: Policy file not found: $policy_file"
+            return 1
+        fi
+        echo "Updating policy for bucket '$bucket_name' from file '$policy_file'..."
+        if aws s3api put-bucket-policy --bucket "$bucket_name" --policy "file://$policy_file"; then
+            echo "Bucket policy updated successfully."
+        else
+            echo "Error updating bucket policy."
+            return 1
+        fi
+    else
+        aws --output json s3api get-bucket-policy --bucket "$bucket_name" | jq -r '.Policy | fromjson'
+    fi
 }
 
 s3 "$@"

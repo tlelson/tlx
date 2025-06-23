@@ -437,6 +437,59 @@ EOF
     fi
 }
 
+_ec2_nacls() {
+    # Manages Network ACLs (NACLs).
+    local help_text="Usage: ec2 nacls [subnet-id] [options]
+    If a subnet-id is provided, NACLs associated with that subnet are shown with detailed rule entries.
+    If no subnet-id is provided, a list of all NACLs in the account is returned.
+
+    Arguments:
+    subnet-id    Optional. The ID of the subnet to filter NACLs by (e.g., subnet-0123456789abcdef0).
+
+    Options:
+    --help       Display this help message
+
+    Examples:
+    ec2 nacls subnet-0123456789abcdef0 | jq  # Show NACLs and rules for a specific subnet
+    ec2 nacls | jtbl                      # List all NACLs
+    "
+
+    local subnet_id=""
+
+    # Process arguments: first non-option arg is subnet_id
+    for arg in "$@"; do
+        if [[ "$arg" == "--help" ]]; then
+            echo "$help_text"
+            return 0
+        elif [[ ! "$arg" == --* ]] && [[ -z "$subnet_id" ]]; then
+            subnet_id="$arg"
+        # Allow for other options in the future, though none are currently defined beyond --help
+        # elif [[ "$arg" == --* ]]; then
+        #    # handle other options if any
+        #    :
+        fi
+    done
+
+    if [ -n "$subnet_id" ]; then
+        aws --output json ec2 describe-network-acls \
+            --query 'NetworkAcls[].{Entries: Entries}' \
+            --filters "Name=association.subnet-id,Values=${subnet_id}" | jq '[.[].Entries[] | {
+                CidrBlock,
+                Direction: (if .Egress then "Out" else "In" end),
+                PortRange: ("\(.PortRange.From) - \(.PortRange.To)"), Protocol, Action: .RuleAction,
+                Priority: .RuleNumber
+            }] | sort_by(.RuleNumber)'
+    else
+        aws --output json ec2 describe-network-acls \
+            --query 'NetworkAcls[]' | jq '[.[] | {
+                Name: (.Tags | map(select(.Key == "Name")) | .[0].Value),
+                NetworkAclId: .NetworkAclId, # Added NetworkAclId for clarity
+                VpcId, Subnets: [.Associations[].SubnetId],
+                IsDefault: .IsDefault # Added IsDefault for more info
+            }]'
+    fi
+}
+
 ec2() {
     local command="$1"
     shift
@@ -469,6 +522,9 @@ ec2() {
     terminate)
         _ec2_terminate "$1"
         ;;
+    nacls)
+        _ec2_nacls "$@"
+        ;;
     --help | -h)
         echo "Usage: ec2 <command> [options]"
         echo "Commands:"
@@ -481,6 +537,7 @@ ec2() {
         echo "  sg-rule-remove Remove a rule from a security group (by rule ID)"
         echo "  amis         List AMIs (tabular)"
         echo "  terminate    Terminate an EC2 instance"
+        echo "  nacls        Manage Network ACLs"
         echo ""
         echo "Run 'ec2 <command> --help' for command-specific help."
         return 0 # Ensure help exits with 0
