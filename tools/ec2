@@ -56,12 +56,12 @@ _ec2_start() {
         return 0
     fi
     if [[ -z "$1" ]]; then # Check for missing instance-id separately
-        echo "$help_text" # Show help if instance-id is missing
+        echo "$help_text"  # Show help if instance-id is missing
         return 1
     fi
 
     local instance_id="$1"
-    aws ec2 start-instances --instance-ids "${instance_id}" > /dev/null 2>&1
+    aws ec2 start-instances --instance-ids "${instance_id}" >/dev/null 2>&1
 }
 
 _ec2_stop() {
@@ -84,12 +84,12 @@ _ec2_stop() {
         return 0
     fi
     if [[ -z "$1" ]]; then # Check for missing instance-id separately
-        echo "$help_text" # Show help if instance-id is missing
+        echo "$help_text"  # Show help if instance-id is missing
         return 1
     fi
 
     local instance_id="$1"
-    aws ec2 stop-instances --instance-ids "${instance_id}" > /dev/null 2>&1
+    aws ec2 stop-instances --instance-ids "${instance_id}" >/dev/null 2>&1
 }
 
 _ec2_list_security_groups() {
@@ -151,6 +151,7 @@ _ec2_list_security_group_rules() {
     # Execute the constructed command string
     # A more detailed jq filter like in misc.sh can be used if specific fields are preferred:
     eval "$cmd" | jq -c '.SecurityGroupRules[] | {
+            SecurityGroupRuleId,
             GroupId,
             Direction: (if .IsEgress == true then "Out" else "In" end),
             Proto: .IpProtocol,
@@ -210,13 +211,13 @@ EOF
     local json_rule_spec="$1"
 
     # Check if jq is available
-    if ! command -v jq &> /dev/null; then
+    if ! command -v jq &>/dev/null; then
         echo "Error: jq is not installed. Please install jq to use this command."
         return 1
     fi
 
     # Basic validation of JSON (jq will fail if not valid)
-    if ! echo "${json_rule_spec}" | jq empty > /dev/null 2>&1; then
+    if ! echo "${json_rule_spec}" | jq empty >/dev/null 2>&1; then
         echo "Error: Invalid JSON provided."
         echo "Attempted to parse: ${json_rule_spec}"
         return 1
@@ -238,7 +239,7 @@ EOF
 
     local ip_permissions
     ip_permissions=$(echo "${json_rule_spec}" | jq -c '.IpPermissions') # Keep as JSON array string
-     if [[ -z "${ip_permissions}" || "${ip_permissions}" == "null" || "${ip_permissions}" == "[]" ]]; then
+    if [[ -z "${ip_permissions}" || "${ip_permissions}" == "null" || "${ip_permissions}" == "[]" ]]; then
         echo "Error: IpPermissions is missing, null, or empty in JSON."
         return 1
     fi
@@ -257,6 +258,181 @@ EOF
     else
         # AWS CLI usually outputs its own errors to stderr.
         echo "Error adding rule to group ${group_id}. Check AWS CLI output for details."
+        return 1
+    fi
+}
+
+_ec2_amis() {
+    # Lists AMIs.
+    local help_text="Usage: ec2 amis [options]
+    Lists latest amazon linux AMIs for the region.
+
+    Options:
+    --help       Display this help message
+
+    Examples:
+    ec2 amis | jtbl
+    "
+
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    aws ec2 describe-images \
+        --owners amazon \
+        --filters "Name=name,Values=amzn2-ami-hvm-*-x86_64-gp2" \
+        --query 'sort_by(Images,&CreationDate)[-1].{ID:ImageId,Name:Name,CreationDate:CreationDate}' \
+        --output json
+
+    return 1
+}
+
+_ec2_terminate() {
+    # Terminates an EC2 instance.
+    local help_text="Usage: ec2 terminate <instance-id> [options]
+    Terminates the specified EC2 instance.
+
+    Arguments:
+    instance-id  The ID of the EC2 instance to terminate.
+
+    Options:
+    --help       Display this help message
+
+    Examples:
+    ec2 terminate i-0123456789abcdef0
+    "
+
+    if [[ "$1" == "--help" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+    if [[ -z "$1" ]]; then # Check for missing instance-id separately
+        echo "Error: Instance ID is missing."
+        echo "$help_text" # Show help if instance-id is missing
+        return 1
+    fi
+
+    local instance_id="$1"
+    echo "Attempting to terminate instance ${instance_id}..."
+    if aws ec2 terminate-instances --instance-ids "${instance_id}"; then
+        echo "Successfully initiated termination for instance ${instance_id}."
+        echo "Note: Termination can take a few minutes to complete."
+    else
+        echo "Error terminating instance ${instance_id}. Check AWS CLI output for details."
+        return 1
+    fi
+}
+
+_ec2_sg_rule_remove() {
+    # Removes a rule from a security group by its rule ID.
+    local help_text
+    read -r -d '' help_text <<'EOF'
+Usage: ec2 sg-rule-remove --rule-id <security-group-rule-id> [options]
+    Removes a specific rule from a security group using its ID.
+
+    Arguments:
+    --rule-id <security-group-rule-id>  The ID of the security group rule to remove (e.g., sgr-0123456789abcdef0).
+
+    Options:
+    --help          Display this help message
+
+    Examples:
+    ec2 sg-rule-remove --rule-id sgr-0123456789abcdef0
+EOF
+
+    local rule_id=""
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        --rule-id)
+            if [[ -z "$2" || "$2" == --* ]]; then
+                echo "Error: --rule-id requires an argument."
+                echo "$help_text"
+                return 1
+            fi
+            rule_id="$2"
+            shift 2
+            ;;
+        --help)
+            echo "$help_text"
+            return 0
+            ;;
+        *)
+            echo "Error: Unknown option or argument: $1"
+            echo "$help_text"
+            return 1
+            ;;
+        esac
+    done
+
+    if [[ -z "${rule_id}" ]]; then
+        echo "Error: --rule-id is a required argument."
+        echo "$help_text"
+        return 1
+    fi
+
+    # Check if jq is available
+    if ! command -v jq &>/dev/null; then
+        echo "Error: jq is not installed. Please install jq to use this command."
+        return 1
+    fi
+
+    # Get rule details to determine GroupId and Direction (IsEgress)
+    echo "Fetching details for rule ${rule_id}..."
+    local rule_details_json
+    rule_details_json=$(aws ec2 describe-security-group-rules --filter "Name=security-group-rule-id,Values=${rule_id}" --output json 2>&1)
+    local aws_cli_exit_code=$?
+
+    if [[ ${aws_cli_exit_code} -ne 0 ]]; then
+        echo "Error fetching rule details from AWS CLI:"
+        echo "${rule_details_json}" # This will contain the error message from AWS CLI
+        return 1
+    fi
+
+    if [[ -z "${rule_details_json}" || "$(echo "${rule_details_json}" | jq '.SecurityGroupRules | length')" -eq 0 ]]; then
+        echo "Error: No rule found with ID ${rule_id}."
+        echo "AWS Response: ${rule_details_json}"
+        return 1
+    fi
+
+    # Ensure we got exactly one rule
+    if [[ "$(echo "${rule_details_json}" | jq '.SecurityGroupRules | length')" -ne 1 ]]; then
+        echo "Error: Expected 1 rule for ID ${rule_id}, but found $(echo "${rule_details_json}" | jq '.SecurityGroupRules | length')."
+        echo "AWS Response: ${rule_details_json}"
+        return 1
+    fi
+
+    local group_id
+    group_id=$(echo "${rule_details_json}" | jq -r '.SecurityGroupRules[0].GroupId')
+    local is_egress_str # Store as string first to check for null
+    is_egress_str=$(echo "${rule_details_json}" | jq -r '.SecurityGroupRules[0].IsEgress')
+
+    if [[ -z "${group_id}" || "${group_id}" == "null" ]]; then
+        echo "Error: Could not determine GroupId for rule ${rule_id}."
+        echo "Rule Details: ${rule_details_json}"
+        return 1
+    fi
+
+    if [[ "${is_egress_str}" == "null" ]]; then
+        echo "Error: Could not determine direction (IsEgress) for rule ${rule_id}."
+        echo "Rule Details: ${rule_details_json}"
+        return 1
+    fi
+
+    local aws_command_action=""
+    if [[ "${is_egress_str}" == "true" ]]; then
+        aws_command_action="revoke-security-group-egress"
+    else
+        aws_command_action="revoke-security-group-ingress"
+    fi
+
+    echo "Attempting to remove rule ${rule_id} from group ${group_id}..."
+    if aws ec2 "${aws_command_action}" --group-id "${group_id}" --security-group-rule-ids "${rule_id}"; then
+        echo "Successfully removed rule ${rule_id} from group ${group_id}."
+    else
+        echo "Error removing rule ${rule_id}. Check AWS CLI output for details."
         return 1
     fi
 }
@@ -282,7 +458,16 @@ ec2() {
         _ec2_list_security_group_rules "$@"
         ;;
     sg-rule-add)
-        _ec2_sg_rule_add "$1" # Pass only the JSON string
+        _ec2_sg_rule_add "$@" # Pass all args for its own parsing
+        ;;
+    sg-rule-remove)
+        _ec2_sg_rule_remove "$@" # Pass all args for its own parsing
+        ;;
+    amis)
+        _ec2_amis "$@"
+        ;;
+    terminate)
+        _ec2_terminate "$1"
         ;;
     --help | -h)
         echo "Usage: ec2 <command> [options]"
@@ -292,7 +477,10 @@ ec2() {
         echo "  stop         Stop an EC2 instance"
         echo "  sg-list      List security groups"
         echo "  sg-rules     List security group rules"
-        echo "  sg-rule-add  Add a rule to a security group"
+        echo "  sg-rule-add  Add a rule to a security group (JSON spec)"
+        echo "  sg-rule-remove Remove a rule from a security group (by rule ID)"
+        echo "  amis         List AMIs (tabular)"
+        echo "  terminate    Terminate an EC2 instance"
         echo ""
         echo "Run 'ec2 <command> --help' for command-specific help."
         return 0 # Ensure help exits with 0
