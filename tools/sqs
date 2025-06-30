@@ -1,0 +1,233 @@
+#!/usr/bin/env bash
+
+## SQS Tools
+#
+# Tools for managing SQS queues.
+
+_sqs_get_and_format_queue_attributes() {
+    local url="$1"
+    # Fetches attributes for a single queue and formats them as a JSON line.
+    aws sqs get-queue-attributes --queue-url "$url" --attribute-names All --output json | jq -c '{ MsgsApprox: .Attributes.ApproximateNumberOfMessages, MsgsNotVisibleApprox: .Attributes.ApproximateNumberOfMessagesNotVisible, MsgsDelayedApprox: .Attributes.ApproximateNumberOfMessagesDelayed, Name: (.Attributes.QueueArn | split(":") | last) }'
+}
+
+_sqs_list_queues() {
+    # Lists SQS queues and their attributes concurrently.
+    local help_text="Usage: sqs list-queues [options]
+    Lists SQS queues with their URL, Name, ARN, and other useful attributes.
+
+    Returns jsonlines.
+
+    Options:
+    --help       Display this help message
+
+    Examples:
+    sqs list-queues | jtbl
+    "
+
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    local queue_urls
+    queue_urls=$(aws sqs list-queues --output json | jq -r '.QueueUrls[]')
+
+    if [[ -z "$queue_urls" ]]; then
+        echo "No SQS queues found in this account and region."
+        return 0
+    fi
+
+    for url in $queue_urls; do
+        _sqs_get_and_format_queue_attributes "$url" &
+    done
+
+    wait
+}
+
+_sqs_read() {
+    local help_text="Usage: sqs read <queue-name-or-arn> [options]
+    Reads messages from the specified SQS queue.
+
+    Returns jsonlines for each message.
+
+    Required:
+    queue-name-or-arn  The name or ARN of the SQS queue.
+
+    Options:
+    --max-messages <1-10>      The maximum number of messages to return (default: 1).
+                               SQS never returns more than 10 messages in a single request.
+    --wait-time <0-20>         The duration (in seconds) for which the call waits for a message to arrive
+                               in the queue before returning (default: 0).
+    --visibility-timeout <sec> The duration (in seconds) that the received messages are hidden from
+                               subsequent retrieve requests after being retrieved by a ReceiveMessage request.
+    --help                     Display this help message
+
+    Examples:
+    sqs read MyQueue
+    sqs read arn:aws:sqs:us-east-1:123456789012:MyQueue --max-messages 10 --wait-time 5
+    "
+
+    if [[ "$1" == "--help" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [[ -z "$1" || "$1" == "--"* ]]; then
+        echo "Error: queue-name-or-arn is required." >&2
+        echo "$help_text" >&2
+        return 1
+    fi
+    local queue_name_or_arn="$1"
+    shift
+
+    local max_messages=1
+    local wait_time=0
+    local visibility_timeout
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        --max-messages)
+            max_messages="$2"
+            shift 2
+            ;;
+        --wait-time)
+            wait_time="$2"
+            shift 2
+            ;;
+        --visibility-timeout)
+            visibility_timeout="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            echo "$help_text" >&2
+            return 1
+            ;;
+        esac
+    done
+
+    local queue_url
+    queue_url=$(_sqs_get_queue_url "$queue_name_or_arn")
+    if [[ $? -ne 0 ]]; then
+        # _sqs_get_queue_url will have already printed an error to stderr
+        return 1
+    fi
+
+    local aws_cli_args=()
+    aws_cli_args+=(--queue-url "$queue_url")
+    aws_cli_args+=(--max-number-of-messages "$max_messages")
+    aws_cli_args+=(--wait-time-seconds "$wait_time")
+
+    if [[ -n "$visibility_timeout" ]]; then
+        aws_cli_args+=(--visibility-timeout "$visibility_timeout")
+    fi
+
+    # Request message attributes if you want to display them later
+    # aws_cli_args+=(--message-attribute-names All) # Or specific attributes
+
+    aws sqs receive-message "${aws_cli_args[@]}" --output json | jq -c '.Messages[]?'
+}
+
+_sqs_get_queue_url() {
+    local queue_name_or_arn="$1"
+
+    if [[ "$queue_name_or_arn" == arn:aws:sqs:* ]]; then
+        # Input is an ARN, parse it to construct the queue URL
+        # Example ARN: arn:aws:sqs:us-east-1:123456789012:MyQueue
+        # Expected URL: https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue
+        local arn_parts=(${queue_name_or_arn//:/ })
+        local region="${arn_parts[3]}"
+        local account_id="${arn_parts[4]}"
+        local queue_name_from_arn="${arn_parts[5]}"
+
+        if [[ -z "$region" || -z "$account_id" || -z "$queue_name_from_arn" ]]; then
+            echo "Error: Invalid SQS ARN format: $queue_name_or_arn" >&2
+            return 1
+        fi
+        echo "https://sqs.${region}.amazonaws.com/${account_id}/${queue_name_from_arn}"
+        return 0
+    else
+        # Input is a queue name
+        local queue_url
+        if ! queue_url=$(aws sqs get-queue-url --queue-name "$queue_name_or_arn" --output text 2>/dev/null); then
+            return 1
+        fi
+        if [[ -z "$queue_url" ]]; then
+            return 1
+        fi
+        echo "$queue_url"
+        return 0
+    fi
+}
+
+_sqs_describe_queue_by_name() {
+    local queue_name_or_arn="$1"
+    if [[ -z "$queue_name_or_arn" ]]; then
+        echo "Error: Queue name or ARN not provided for description."
+        return 1
+    fi
+
+    local queue_url
+    if ! queue_url=$(_sqs_get_queue_url "$queue_name_or_arn"); then
+        return 1
+    fi
+
+    # Fetch attributes and parse Policy, RedrivePolicy, and RedriveAllowPolicy, and add QueueUrl to the output
+    aws sqs get-queue-attributes --queue-url "$queue_url" --attribute-names All --output json | jq --arg qurl "$queue_url" '{QueueUrl: $qurl} + (.Attributes.Policy |= fromjson? | .Attributes.RedrivePolicy |= fromjson? | .Attributes.RedriveAllowPolicy |= fromjson? | .)'
+    if [[ ${PIPESTATUS[0]} -ne 0 || ${PIPESTATUS[1]} -ne 0 ]]; then
+        # Error in aws command or jq processing
+        # This might happen if the queue_url (even if constructed from ARN) is invalid or queue doesn't exist
+        return 1
+    fi
+
+    return 0 # Success
+}
+
+sqs() {
+    local command_or_queue_name="$1"
+    # Shift only if command_or_queue_name is not empty, to preserve $@ for _sqs_list_queues if no arg is given
+    if [[ -n "$command_or_queue_name" ]]; then
+        shift
+    fi
+
+    case "$command_or_queue_name" in
+    read)
+        _sqs_read "$@"
+        ;;
+    --help | -h)
+        echo "Usage: sqs [queue_name | command] [options]"
+        echo ""
+        echo "If no argument is provided, lists all SQS queues and their attributes."
+        echo "If a queue_name is provided, displays all attributes for that specific queue."
+        echo ""
+        echo "Commands:"
+        echo "  read           Read messages from an SQS queue (see 'sqs read --help')"
+        echo ""
+        echo "Examples:"
+        echo "  sqs              # Lists all queues"
+        echo "  sqs MyQueueName  # Describes MyQueueName"
+        echo "  sqs read --help  # Shows help for the read command"
+        echo ""
+        echo "Run 'sqs <command> --help' for command-specific help."
+        return 0
+        ;;
+    *)
+        if [[ -z "$command_or_queue_name" ]]; then
+            _sqs_list_queues "$@" # Pass original arguments if any (e.g. for future --help in list)
+        else
+            # Attempt to describe the queue by name
+            # Pass the remaining arguments (if any) to _sqs_describe_queue_by_name
+            # though it currently doesn't use them.
+            if ! _sqs_describe_queue_by_name "$command_or_queue_name" "$@"; then
+                echo "Error: Unknown command or queue not found: '$command_or_queue_name'"
+                echo "Run 'sqs --help' for a list of commands and usage."
+                return 1
+            fi
+        fi
+        ;;
+    esac
+}
+
+# shellcheck disable=SC2068
+sqs "$@"
