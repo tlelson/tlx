@@ -54,4 +54,4 @@ s3 = { reference = "tools/s3", type = "file" }
 secrets = { reference = "tools/secrets", type = "file" }
 iam = { reference = "tools/iam", type = "file" }
 ec2 = { reference = "tools/ec2", type = "file" }
-vpc = { reference = "tools/vpc.sh", type = "file" }
+vpc = { reference = "tools/vpc", type = "file" }
