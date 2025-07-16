@@ -25,6 +25,18 @@ lambda() {
         return 0 # Exit the function after printing help
     fi
 
+    # Subcommand: download-link <lambda_name>
+    if [ "$1" = "download-link" ]; then
+        if [ -z "$2" ]; then
+            echo "Error: 'download-link' requires a lambda function name" >&2
+            echo "$help_text"
+            return 1
+        fi
+        aws --output text lambda get-function --function-name "$2" --query 'Code.Location'
+        return $?
+    fi
+    
+    # No function name: list functions
     if [ -z "$1" ]; then
         aws --output json lambda list-functions | jq -c '.Functions[] | {
             FunctionName, Runtime,
