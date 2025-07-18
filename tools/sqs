@@ -109,7 +109,7 @@ _sqs_read() {
 
     local queue_url
     queue_url=$(_sqs_get_queue_url "$queue_name_or_arn")
-    if [[ $? -ne 0 ]]; then
+    if ! queue_url=$(_sqs_get_queue_url "$queue_name_or_arn"); then
         # _sqs_get_queue_url will have already printed an error to stderr
         return 1
     fi
@@ -126,7 +126,9 @@ _sqs_read() {
     # Request message attributes if you want to display them later
     # aws_cli_args+=(--message-attribute-names All) # Or specific attributes
 
-    aws sqs receive-message "${aws_cli_args[@]}" --output json | jq -c '.Messages[]?'
+    aws sqs receive-message "${aws_cli_args[@]}" --output json | jq -c '
+        .Messages[]? | with_entries(.key |= ((.[0:1] | ascii_downcase) + .[1:]))
+    '
 }
 
 _sqs_get_queue_url() {
@@ -136,7 +138,9 @@ _sqs_get_queue_url() {
         # Input is an ARN, parse it to construct the queue URL
         # Example ARN: arn:aws:sqs:us-east-1:123456789012:MyQueue
         # Expected URL: https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue
-        local arn_parts=(${queue_name_or_arn//:/ })
+        local IFS=':'
+        local -a arn_parts
+        read -ra arn_parts <<< "$queue_name_or_arn"
         local region="${arn_parts[3]}"
         local account_id="${arn_parts[4]}"
         local queue_name_from_arn="${arn_parts[5]}"
@@ -151,9 +155,13 @@ _sqs_get_queue_url() {
         # Input is a queue name
         local queue_url
         if ! queue_url=$(aws sqs get-queue-url --queue-name "$queue_name_or_arn" --output text 2>/dev/null); then
+            # This can fail if the queue doesn't exist or if permissions are missing.
+            # The error from the aws cli should be sufficient.
             return 1
         fi
         if [[ -z "$queue_url" ]]; then
+            # This case might happen if get-queue-url returns a 0 exit code but empty output.
+            echo "Error: Queue not found: $queue_name_or_arn" >&2
             return 1
         fi
         echo "$queue_url"
@@ -173,15 +181,50 @@ _sqs_describe_queue_by_name() {
         return 1
     fi
 
-    # Fetch attributes and parse Policy, RedrivePolicy, and RedriveAllowPolicy, and add QueueUrl to the output
-    aws sqs get-queue-attributes --queue-url "$queue_url" --attribute-names All --output json | jq --arg qurl "$queue_url" '{QueueUrl: $qurl} + (.Attributes.Policy |= fromjson? | .Attributes.RedrivePolicy |= fromjson? | .Attributes.RedriveAllowPolicy |= fromjson? | .)'
-    if [[ ${PIPESTATUS[0]} -ne 0 || ${PIPESTATUS[1]} -ne 0 ]]; then
+    # Fetch attributes, parse JSON string attributes, and add QueueUrl and SnsSubscriptions to the output
+    local output
+    if ! output=$(aws sqs get-queue-attributes --queue-url "$queue_url" --attribute-names All --output json | jq --arg qurl "$queue_url" '
+        (.Attributes.Policy |= fromjson? | .Attributes.RedrivePolicy |= fromjson? | .Attributes.RedriveAllowPolicy |= fromjson?)
+        | . + {
+            QueueUrl: $qurl,
+            SnsSubscriptions: ([
+                .Attributes.Policy.Statement[]?
+                | select(
+                    (
+                        .Action == "SQS:SendMessage" or
+                        (.Action | type == "array" and any(.[]; . == "SQS:SendMessage"))
+                    ) and .Effect == "Allow"
+                )
+                | .Condition.ArnLike."aws:SourceArn" // .Condition.ArnEquals."aws:SourceArn"
+            ] | map(select(. != null)) | unique)
+        }
+    '); then
         # Error in aws command or jq processing
-        # This might happen if the queue_url (even if constructed from ARN) is invalid or queue doesn't exist
         return 1
     fi
+    echo "$output"
 
     return 0 # Success
+}
+
+_sqs_purge() {
+    local help_text="Usage: sqs purge <queue-name-or-arn>\nPurges all messages from the specified SQS queue. This action cannot be undone.\n\nExamples:\n  sqs purge MyQueueName\n"
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+    if [[ -z "$1" ]]; then
+        echo "Error: queue name or ARN is required for purge" >&2
+        echo "$help_text" >&2
+        return 1
+    fi
+    local queue_name_or_arn="$1"
+    local queue_url
+    if ! queue_url=$(_sqs_get_queue_url "$queue_name_or_arn"); then
+        echo "Error: Failed to resolve queue URL for '$queue_name_or_arn'" >&2
+        return 1
+    fi
+    aws sqs purge-queue --queue-url "$queue_url"
 }
 
 sqs() {
@@ -195,6 +238,9 @@ sqs() {
     read)
         _sqs_read "$@"
         ;;
+    purge)
+        _sqs_purge "$@"
+        ;;
     --help | -h)
         echo "Usage: sqs [queue_name | command] [options]"
         echo ""
@@ -203,6 +249,7 @@ sqs() {
         echo ""
         echo "Commands:"
         echo "  read           Read messages from an SQS queue (see 'sqs read --help')"
+        echo "  purge          Purge all messages from an SQS queue (see 'sqs purge --help')"
         echo ""
         echo "Examples:"
         echo "  sqs              # Lists all queues"
