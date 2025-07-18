@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+
+## SNS Tools
+# Tools for managing SNS topics and subscriptions.
+
+_sns_help() {
+  cat <<EOF
+Usage: sns <command> [options]
+
+Commands:
+  topic    Describe or list SNS topics.
+  sub      Describe or list SNS subscriptions.
+
+Run 'sns <command> --help' for command-specific help.
+EOF
+}
+
+_sns_topic() {
+  local help_text="Usage: sns topic [<topic-name-or-arn>] [--help|-h]
+Describe an SNS topic or list topics.
+
+Without arguments, lists topics as jsonlines with fields:
+  Name    The topic name.
+  Arn     The topic ARN.
+
+With <topic-name-or-arn>, describes the topic attributes.
+
+Options:
+  --help, -h   Display this help message.
+
+Examples:
+  sns topic | jtbl
+  sns topic MyTopicName | jtbl
+"
+  # Help flag
+  if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+    echo "$help_text"
+    return 0
+  fi
+  # No args: list topics
+  if [[ -z "$1" ]]; then
+    local arns
+    arns=$(aws sns list-topics --output json | jq -r '.Topics[].TopicArn')
+    if [[ -z "$arns" ]]; then
+      echo "No SNS topics found."
+      return 0
+    fi
+    while IFS= read -r arn; do
+      local name=${arn##*:}
+      jq -nc --arg Name "$name" --arg Arn "$arn" '{Name: $Name, Arn: $Arn}'
+    done <<< "$arns"
+    return 0
+  fi
+  # Describe single topic
+  local id="$1"
+  shift
+  local arn
+  if [[ "$id" == arn:aws:sns:* ]]; then
+    arn="$id"
+  else
+    arn=$(aws sns list-topics --output json | jq -r --arg NAME "$id" '.Topics[].TopicArn | select(. | endswith($NAME))')
+    if [[ -z "$arn" ]]; then
+      echo "Error: Topic not found: $id" >&2
+      return 1
+    fi
+  fi
+  aws sns get-topic-attributes --topic-arn "$arn" --output json \
+    | jq -c --arg Arn "$arn" '.Attributes | .Arn=$Arn'
+}
+
+_sns_sub() {
+  local help_text="Usage: sns sub [<subscription-arn>] [--help|-h]
+Describe an SNS subscription or list subscriptions.
+
+Without arguments, lists subscriptions as jsonlines with fields:
+  SubscriptionArn, Protocol, Endpoint, TopicArn
+
+With <subscription-arn>, describes the subscription attributes.
+
+Options:
+  --help, -h   Display this help message.
+
+Examples:
+  sns sub | jtbl
+  sns sub arn:aws:sns:...:sub/123 | jtbl
+"
+  # Help flag
+  if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+    echo "$help_text"
+    return 0
+  fi
+  # No args: list subs
+  if [[ -z "$1" ]]; then
+    aws sns list-subscriptions --output json \
+      | jq -c '.Subscriptions[] | {SubscriptionArn, Protocol, Endpoint, TopicArn}'
+    return 0
+  fi
+  # Describe single subscription
+  local arn="$1"
+  shift
+  if [[ "$arn" != arn:aws:sns:* ]]; then
+    echo "Error: Subscription ARN required to describe a subscription." >&2
+    return 1
+  fi
+  aws sns get-subscription-attributes --subscription-arn "$arn" --output json \
+    | jq -c --arg SubscriptionArn "$arn" '.Attributes | .SubscriptionArn=$SubscriptionArn'
+}
+
+sns() {
+  local cmd="$1"
+  if [[ -n "$cmd" ]]; then shift; fi
+  case "$cmd" in
+    topic)
+      _sns_topic "$@"
+      ;;
+    sub)
+      _sns_sub "$@"
+      ;;
+    --help|-h|"" )
+      _sns_help
+      ;;
+    *)
+      echo "Error: Unknown command: $cmd" >&2
+      _sns_help
+      return 1
+      ;;
+  esac
+}
+
+# Shell entrypoint
+sns "$@"
