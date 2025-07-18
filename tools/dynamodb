@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+# dynamodb: List or describe DynamoDB tables
+dynamodb() {
+    local help_text="Usage: ${FUNCNAME[0]} [TABLE_NAME]
+If no table name is provided, list all DynamoDB tables with key info.
+
+Options:
+  -h, --help    Show this help message
+
+Examples:
+  dynamodb
+  dynamodb MyTable
+"
+
+    # Help
+    if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    # No table name: list tables
+    if [ -z "$1" ]; then
+        # Retrieve all table names and describe each
+        aws --output json dynamodb list-tables | \
+            jq -r '.TableNames[]' | \
+            while read -r tbl; do
+                aws --output json dynamodb describe-table --table-name "$tbl" | \
+                    jq -c '{TableName: .Table.TableName, TableStatus: .Table.TableStatus, ItemCount: .Table.ItemCount, TableSizeBytes: .Table.TableSizeBytes, CreationDateTime: .Table.CreationDateTime}'
+            done
+    else
+        # Describe specific table
+        aws --output json dynamodb describe-table --table-name "$1" | jq
+    fi
+}
+
+dynamodb "$@"
