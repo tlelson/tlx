@@ -6,6 +6,8 @@ s3() {
 
     Commands:
     bucket-policy     Get the bucket policy for a specific bucket
+    list-deleted      List deleted objects in a bucket
+    restore           Restore a deleted object from a specific version
 
     Options:
     --help           Display this help message
@@ -16,7 +18,8 @@ s3() {
     Examples:
     s3 | jtbl
     s3 bucket-policy my-bucket-name
-
+    s3 list-deleted my-bucket-name
+    s3 restore my-bucket-name my-file.txt 1234567890
     "
 
     # If the first argument is --help, display help and exit.
@@ -37,6 +40,12 @@ s3() {
         case "$command" in
         "bucket-policy")
             bucket_policy "$@"
+            ;;
+        "list-deleted")
+            list_deleted "$@"
+            ;;
+        "restore")
+            restore_object "$@"
             ;;
         *)
             echo "Unknown command: $command"
@@ -85,29 +94,29 @@ bucket_policy() {
     # Parse arguments
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-            -f|--update-from-file)
-                if [ -z "$2" ]; then
-                    echo "Error: $1 requires a file path."
-                    echo "$help_text"
-                    return 1
-                fi
-                policy_file="$2"
-                shift 2
-                ;;
-            --help)
+        -f | --update-from-file)
+            if [ -z "$2" ]; then
+                echo "Error: $1 requires a file path."
                 echo "$help_text"
-                return 0
-                ;;
-            *)
-                if [ -z "$bucket_name" ]; then
-                    bucket_name="$1"
-                    shift
-                else
-                    echo "Unknown argument: $1"
-                    echo "$help_text"
-                    return 1
-                fi
-                ;;
+                return 1
+            fi
+            policy_file="$2"
+            shift 2
+            ;;
+        --help)
+            echo "$help_text"
+            return 0
+            ;;
+        *)
+            if [ -z "$bucket_name" ]; then
+                bucket_name="$1"
+                shift
+            else
+                echo "Unknown argument: $1"
+                echo "$help_text"
+                return 1
+            fi
+            ;;
         esac
     done
 
@@ -132,6 +141,105 @@ bucket_policy() {
         fi
     else
         aws --output json s3api get-bucket-policy --bucket "$bucket_name" | jq -r '.Policy | fromjson'
+    fi
+}
+
+list_deleted() {
+    local help_text="Usage: s3 list-deleted BUCKET_NAME [options]
+
+    Arguments:
+    BUCKET_NAME       Name of the S3 bucket
+
+    Options:
+    --help                       Display this help message
+
+    Output:
+    jsonlines representing the deleted objects.
+
+    Examples:
+    s3 list-deleted my-bucket-name
+    "
+    local bucket_name=""
+
+    # Parse arguments
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+        --help)
+            echo "$help_text"
+            return 0
+            ;;
+        *)
+            if [ -z "$bucket_name" ]; then
+                bucket_name="$1"
+                shift
+            else
+                echo "Unknown argument: $1"
+                echo "$help_text"
+                return 1
+            fi
+            ;;
+        esac
+    done
+
+    # Check if bucket name is provided
+    if [ -z "$bucket_name" ]; then
+        echo "Error: Bucket name is required"
+        echo "$help_text"
+        return 1
+    fi
+
+    aws --output json s3api list-object-versions --bucket "$bucket_name" --query "DeleteMarkers[*].{Key: Key, VersionId: VersionId, LastModified: LastModified}" | jq -c '.[]'
+}
+
+restore_object() {
+    local help_text="Usage: s3 restore BUCKET_NAME KEY VERSION_ID [options]
+
+    Arguments:
+    BUCKET_NAME       Name of the S3 bucket
+    KEY               The key of the object to restore
+    VERSION_ID        The version ID of the delete marker to remove
+
+    Options:
+    --help                       Display this help message
+
+    Output:
+    A confirmation message.
+
+    Examples:
+    s3 restore my-bucket-name path/to/my/object.txt 'aBcDeFgHiJkLmNoPqRsTuVwXyZ'
+
+    Or use FZF to pipe a list of deleted objects like so:
+    s3 list-deleted \"\$BUCKET\" | \
+    jtbl --no-wrap | fzf --header-lines=2 | awk '{print $1, $2}' | \
+    xargs -n 2 s3 restore \"\$BUCKET\"
+
+    "
+    local bucket_name=""
+    local key=""
+    local version_id=""
+
+    # Parse arguments
+    if [[ "$1" == "--help" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+        echo "Error: Bucket name, key, and version ID are required"
+        echo "$help_text"
+        return 1
+    fi
+
+    bucket_name="$1"
+    key="$2"
+    version_id="$3"
+
+    echo "Restoring object '$key' in bucket '$bucket_name' by deleting version '$version_id'..."
+    if aws s3api delete-object --bucket "$bucket_name" --key "$key" --version-id "$version_id" >/dev/null; then
+        echo "Object restored successfully."
+    else
+        echo "Error restoring object."
+        return 1
     fi
 }
 
