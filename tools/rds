@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+
+rds() {
+    local help_text="Usage: ${FUNCNAME[0]} [COMMAND] [ARGS] [options]
+
+    Commands:
+    list                 List RDS DB clusters as jsonlines
+    get CLUSTER_ID       Describe a specific DB cluster
+
+    Options:
+    --help, -h           Display this help message
+
+    Output:
+    list: jsonlines of basic DB cluster info (Identifier, Status, Engine, Version, Endpoints).
+    get: single JSON object describing the DB cluster.
+
+    Examples:
+    rds list | jtbl
+    rds get my-aurora-cluster
+    "
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [ -z "$1" ]; then
+        echo "$help_text"
+        return 1
+    fi
+
+    local command="$1"
+    shift
+
+    case "$command" in
+    list)
+        rds_list "$@"
+        ;;
+    get)
+        rds_get "$@"
+        ;;
+    *)
+        echo "Unknown command: $command"
+        echo "$help_text"
+        return 1
+        ;;
+    esac
+}
+
+rds_list() {
+    local help_text="Usage: rds list [options]
+
+    Options:
+    --help, -h          Display this help message
+
+    Output:
+    jsonlines of basic DB cluster info.
+    "
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [ -n "$1" ]; then
+        echo "Unknown argument: $1"
+        echo "$help_text"
+        return 1
+    fi
+
+    aws rds describe-db-clusters --output json | jq -c '
+      .DBClusters[] | {
+        DBClusterIdentifier: .DBClusterIdentifier,
+        Status: .Status,
+        Engine: .Engine,
+        EngineVersion: .EngineVersion
+      }'
+}
+
+rds_get() {
+    local help_text="Usage: rds get CLUSTER_ID [options]
+
+    Arguments:
+    CLUSTER_ID          The DB cluster identifier or ARN
+
+    Options:
+    --help, -h          Display this help message
+
+    Output:
+    A single JSON object describing the DB cluster.
+    "
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [ -z "$1" ]; then
+        echo "Error: CLUSTER_ID is required"
+        echo "$help_text"
+        return 1
+    fi
+
+    local cluster_id="$1"
+
+    local describe_output
+    if ! describe_output=$(aws rds describe-db-clusters --db-cluster-identifier "$cluster_id" --output json); then
+        return 1
+    fi
+
+    # Emit the first (and only) cluster object, or error if none found
+    echo "$describe_output" | jq -e '.DBClusters | if length > 0 then .[0] else empty end' || {
+        echo "Error: Cluster not found: $cluster_id" >&2
+        return 1
+    }
+}
+
+rds "$@"

@@ -58,3 +58,4 @@ ec2 = { reference = "tools/ec2", type = "file" }
 vpc = { reference = "tools/vpc", type = "file" }
 sqs = { reference = "tools/sqs", type = "file" }
 sns = { reference = "tools/sns", type = "file" }
+rds = { reference = "tools/rds", type = "file" }
