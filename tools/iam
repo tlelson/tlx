@@ -41,17 +41,185 @@ iam_role_policy() {
     aws --output json iam get-role-policy --role-name "$1" --policy-name "$2" | jq
 }
 
+iam_role_update() {
+    local help_text="Usage: iam role update <role_name> <update_json_path>
+
+    Update operations are driven by keys present in the provided JSON file.
+    - If 'AssumeRolePolicyDocument' is present, update the role's trust policy.
+    - If 'InlinePolicy' is present, add or update a single inline policy on the role.
+    If none of the supported keys are present, no changes are made.
+
+    Arguments:
+    role_name     Name of the IAM role
+    json_path     Path to JSON update document
+
+    Options:
+    --help        Display this help message
+
+    Output:
+    Confirmation message on success or AWS CLI error output.
+
+    Examples:
+    iam role update my-app-role ./role-update.json
+
+    Wrapper document (role-update.json):
+    {
+      \"AssumeRolePolicyDocument\": {
+        \"Version\": \"2012-10-17\",
+        \"Statement\": [
+          {
+            \"Effect\": \"Allow\",
+            \"Principal\": { \"Service\": \"ecs-tasks.amazonaws.com\" },
+            \"Action\": \"sts:AssumeRole\"
+          }
+        ]
+      },
+      \"InlinePolicy\": {
+        \"PolicyName\": \"AllowS3Read\",
+        \"PolicyDocument\": {
+          \"Version\": \"2012-10-17\",
+          \"Statement\": [
+            {
+              \"Effect\": \"Allow\",
+              \"Action\": [\"s3:GetObject\"],
+              \"Resource\": [\"arn:aws:s3:::my-bucket/*\"]
+            }
+          ]
+        }
+      }
+    }
+
+    Notes:
+    - The JSON must be a valid wrapper document; supported keys are .AssumeRolePolicyDocument and .InlinePolicy.
+    - The inner trust policy must be a valid IAM trust policy document.
+    - For InlinePolicy, both PolicyName and PolicyDocument are required.
+    - Use \"Principal\" appropriate to your use-case (e.g. {\"AWS\": \"arn:aws:iam::123456789012:root\"} or OIDC/SAML providers).
+    - Optional conditions can be added under \"Condition\" in a statement."
+
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [ "$#" -ne 2 ]; then
+        echo "$help_text"
+        return 1
+    fi
+
+    local role_name="$1"
+    local json_path="$2"
+
+    if [ ! -f "$json_path" ]; then
+        echo "File not found: $json_path" >&2
+        return 1
+    fi
+
+    # Validate JSON
+    if ! jq empty "$json_path" >/dev/null 2>&1; then
+        echo "Invalid JSON: $json_path" >&2
+        return 1
+    fi
+
+    local did_any_change=0
+    local op_status=0
+
+    # Only update trust policy if wrapper key is present
+    if jq -e 'has("AssumeRolePolicyDocument")' "$json_path" >/dev/null 2>&1; then
+        # Extract the trust policy document
+        local tmp_trust
+        tmp_trust=$(mktemp 2>/dev/null || mktemp -t trustdoc)
+        if ! jq '.AssumeRolePolicyDocument' "$json_path" >"$tmp_trust"; then
+            echo "Failed to extract AssumeRolePolicyDocument from $json_path" >&2
+            [ -f "$tmp_trust" ] && rm -f "$tmp_trust"
+            return 1
+        fi
+        # Validate extracted JSON
+        if ! jq empty "$tmp_trust" >/dev/null 2>&1; then
+            echo "Extracted AssumeRolePolicyDocument is not valid JSON" >&2
+            rm -f "$tmp_trust"
+            return 1
+        fi
+
+        aws iam update-assume-role-policy \
+            --role-name "$role_name" \
+            --policy-document "file://$tmp_trust"
+
+        local status=$?
+        if [ $status -eq 0 ]; then
+            echo "Updated trust policy for role '$role_name' from '$json_path' (.AssumeRolePolicyDocument)"
+            rm -f "$tmp_trust" 2>/dev/null || true
+            did_any_change=1
+        else
+            rm -f "$tmp_trust" 2>/dev/null || true
+            op_status=$status
+        fi
+    fi
+
+    # Add or update a single inline policy if provided as InlinePolicy
+    if jq -e 'has("InlinePolicy")' "$json_path" >/dev/null 2>&1; then
+        local policy_name
+        policy_name=$(jq -r '.InlinePolicy.PolicyName // empty' "$json_path")
+        if [ -z "$policy_name" ]; then
+            echo "InlinePolicy.PolicyName is required" >&2
+            return 1
+        fi
+
+        local tmp_inline
+        tmp_inline=$(mktemp 2>/dev/null || mktemp -t inlinepol)
+        if ! jq '.InlinePolicy.PolicyDocument' "$json_path" >"$tmp_inline"; then
+            echo "Failed to extract InlinePolicy.PolicyDocument from $json_path" >&2
+            [ -f "$tmp_inline" ] && rm -f "$tmp_inline"
+            return 1
+        fi
+
+        # Validate extracted JSON
+        if ! jq empty "$tmp_inline" >/dev/null 2>&1; then
+            echo "Extracted InlinePolicy.PolicyDocument is not valid JSON" >&2
+            rm -f "$tmp_inline"
+            return 1
+        fi
+
+        aws iam put-role-policy \
+            --role-name "$role_name" \
+            --policy-name "$policy_name" \
+            --policy-document "file://$tmp_inline"
+
+        local status=$?
+        if [ $status -eq 0 ]; then
+            echo "Put inline policy '$policy_name' on role '$role_name' from '$json_path' (.InlinePolicy.PolicyDocument)"
+            did_any_change=1
+            rm -f "$tmp_inline" 2>/dev/null || true
+        else
+            rm -f "$tmp_inline" 2>/dev/null || true
+            op_status=$status
+        fi
+    fi
+
+    if [ $did_any_change -eq 0 ]; then
+        echo "No changes made: '$json_path' contains no supported keys"
+    fi
+    return $op_status
+}
+
 iam_role() {
-    local help_text="Usage: iam role [role_name]
+    local help_text="Usage: iam role [role_name]\n       iam role update <role_name> <json_path>
 
     Without a role name, a list of IAM roles is returned. If a role name is provided, details of the role are returned.
 
     Additionally:
     - To view attached policies, use 'iam policy'.
     - To view role-specific inline policies, use 'iam role-policy'.
+    - To update a role's trust policy, use 'iam role update'.
 
     Options:
     --help        Display this help message"
+
+    # Subcommands take precedence so their --help is respected
+    if [ "$1" = "update" ]; then
+        shift
+        iam_role_update "$@"
+        return $?
+    fi
 
     if [[ "$*" == *"--help"* ]]; then
         echo "$help_text"
