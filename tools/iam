@@ -201,8 +201,65 @@ iam_role_update() {
     return $op_status
 }
 
+iam_role_assume() {
+    local help_text="Usage: iam role assume <role_name_or_arn>
+
+    Assume the specified IAM role and output temporary credential export lines.
+
+    Arguments:
+    role_name_or_arn  Role name (in current account) or full role ARN
+
+    Options:
+    --help        Display this help message
+
+    Output:
+    Shell export lines for AWS credentials suitable for eval or source.
+
+    Examples:
+    eval \$(iam role assume MyRole)
+    iam role assume arn:aws:iam::123456789012:role/MyRole | source
+    "
+
+    if [[ "$1" == "--help" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [ -z "$1" ]; then
+        echo "$help_text"
+        return 1
+    fi
+
+    local input="$1"
+    local role_arn="$input"
+    if [[ ! "$input" =~ ^arn:aws:iam::[0-9]{12}:role/ ]]; then
+        # Construct ARN from current account id
+        local account_id
+        account_id=$(aws --output json sts get-caller-identity --query Account 2>/dev/null | jq -r)
+        if [ -z "$account_id" ] || [ "$account_id" = "null" ]; then
+            echo "Failed to determine AWS account ID to build role ARN" >&2
+            return 1
+        fi
+        role_arn="arn:aws:iam::${account_id}:role/${input}"
+    fi
+
+    local session_name
+    session_name="iam-role-assume-$(whoami 2>/dev/null || echo user)-$(date +%s)"
+
+    local resp
+    if ! resp=$(aws --output json sts assume-role --role-arn "$role_arn" --role-session-name "$session_name" 2>/dev/null); then
+        echo "Failed to assume role: $role_arn" >&2
+        return 1
+    fi
+
+    echo "export AWS_ACCESS_KEY_ID=$(echo "$resp" | jq -r '.Credentials.AccessKeyId')"
+    echo "export AWS_SECRET_ACCESS_KEY=$(echo "$resp" | jq -r '.Credentials.SecretAccessKey')"
+    echo "export AWS_SESSION_TOKEN=$(echo "$resp" | jq -r '.Credentials.SessionToken')"
+    echo "export AWS_SECURITY_TOKEN=$(echo "$resp" | jq -r '.Credentials.SessionToken')"
+}
+
 iam_role() {
-    local help_text="Usage: iam role [role_name]\n       iam role update <role_name> <json_path>
+    local help_text="Usage: iam role [role_name]\n       iam role update <role_name> <json_path>\n       iam role assume <role_name_or_arn>
 
     Without a role name, a list of IAM roles is returned. If a role name is provided, details of the role are returned.
 
@@ -210,11 +267,17 @@ iam_role() {
     - To view attached policies, use 'iam policy'.
     - To view role-specific inline policies, use 'iam role-policy'.
     - To update a role's trust policy, use 'iam role update'.
+    - To assume a role and emit credentials, use 'iam role assume'.
 
     Options:
     --help        Display this help message"
 
     # Subcommands take precedence so their --help is respected
+    if [ "$1" = "assume" ]; then
+        shift
+        iam_role_assume "$@"
+        return $?
+    fi
     if [ "$1" = "update" ]; then
         shift
         iam_role_update "$@"
