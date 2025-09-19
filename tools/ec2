@@ -92,9 +92,9 @@ _ec2_stop() {
     aws ec2 stop-instances --instance-ids "${instance_id}" >/dev/null 2>&1
 }
 
-_ec2_list_security_groups() {
+_ec2_sg_list() {
     # Lists security groups with their ID, Name, and Description.
-    local help_text="Usage: ec2 sg-list [options]
+    local help_text="Usage: ec2 sg list [options]
     Lists security groups with their ID, Name, and Description.
 
     Returns jsonlines.
@@ -103,7 +103,7 @@ _ec2_list_security_groups() {
     --help       Display this help message
 
     Examples:
-    ec2 sg-list | jtbl
+    ec2 sg list | jtbl
     "
 
     if [[ "$*" == *"--help"* ]]; then
@@ -114,9 +114,9 @@ _ec2_list_security_groups() {
     aws --output json ec2 describe-security-groups | jq -c '.SecurityGroups[] | {GroupId, GroupName, Description}'
 }
 
-_ec2_list_security_group_rules() {
+_ec2_sg_rules() {
     # Lists rules for a specific security group or all rules.
-    local help_text="Usage: ec2 sg-rules [security-group-id] [options]
+    local help_text="Usage: ec2 sg rules [security-group-id] [options]
     If a security-group-id is provided, all rules for that group are returned.
     Otherwise, all rules for all security groups are returned.
 
@@ -127,8 +127,8 @@ _ec2_list_security_group_rules() {
     --help              Display this help message
 
     Examples:
-    ec2 sg-rules sg-0123456789abcdef0 | jtbl
-    ec2 sg-rules | jtbl
+    ec2 sg rules sg-0123456789abcdef0 | jtbl
+    ec2 sg rules | jtbl
     "
 
     local sg_id=""
@@ -162,22 +162,20 @@ _ec2_list_security_group_rules() {
 }
 
 _ec2_sg_rule_add() {
-    # Adds a rule to a security group.
+    # Adds a rule to a security group from a JSON file.
     local help_text
     read -r -d '' help_text <<'EOF'
-Usage: ec2 sg-rule-add <json-rule-spec> [options]
+Usage: ec2 sg rule-add <path-to-json-file> [options]
     Adds an inbound or outbound rule to the specified security group.
 
     Arguments:
-    json-rule-spec  A JSON string defining the rule. See examples for structure.
-                    The JSON string must be properly escaped for shell arguments,
-                    typically by enclosing it in single quotes.
+    path-to-json-file  A file path to a JSON file defining the rule.
 
     Options:
-    --help          Display this help message
+    --help             Display this help message
 
-    Examples:
-    ec2 sg-rule-add '{
+    Example JSON file content:
+    {
         "GroupId": "sg-0123456789abcdef0",
         "Direction": "In",
         "IpPermissions": [{
@@ -186,16 +184,10 @@ Usage: ec2 sg-rule-add <json-rule-spec> [options]
             "ToPort": 22,
             "IpRanges": [{"CidrIp": "192.168.1.100/32", "Description": "SSH access for my IP"}]
         }]
-    }'
+    }
 
-    ec2 sg-rule-add '{
-        "GroupId": "sg-0123456789abcdef0",
-        "Direction": "Out",
-        "IpPermissions": [{
-            "IpProtocol": "-1",
-            "IpRanges": [{"CidrIp": "0.0.0.0/0", "Description": "Allow all outbound"}]
-        }]
-    }'
+    Example usage:
+    ec2 sg rule-add /path/to/my-rule.json
 EOF
 
     if [[ "$1" == "--help" ]]; then
@@ -203,12 +195,20 @@ EOF
         return 0
     fi
     if [[ -z "$1" ]]; then
-        echo "Error: JSON rule specification is missing."
-        echo "$help_text" # Show help if json-rule-spec is missing
+        echo "Error: JSON rule specification file path is missing."
+        echo "$help_text"
         return 1
     fi
 
-    local json_rule_spec="$1"
+    local json_rule_file="$1"
+
+    if [[ ! -r "${json_rule_file}" ]]; then
+        echo "Error: Cannot read rule file: ${json_rule_file}"
+        return 1
+    fi
+
+    local json_rule_spec
+    json_rule_spec=$(cat "${json_rule_file}")
 
     # Check if jq is available
     if ! command -v jq &>/dev/null; then
@@ -218,7 +218,7 @@ EOF
 
     # Basic validation of JSON (jq will fail if not valid)
     if ! echo "${json_rule_spec}" | jq empty >/dev/null 2>&1; then
-        echo "Error: Invalid JSON provided."
+        echo "Error: Invalid JSON provided in ${json_rule_file}."
         echo "Attempted to parse: ${json_rule_spec}"
         return 1
     fi
@@ -252,7 +252,7 @@ EOF
     fi
 
     # Construct and execute the command
-    echo "Attempting to add rule to group ${group_id}..."
+    echo "Attempting to add rule to group ${group_id} from ${json_rule_file}..."
     if aws ec2 "${aws_command_action}" --group-id "${group_id}" --ip-permissions "${ip_permissions}"; then
         echo "Successfully added rule to group ${group_id}."
     else
@@ -262,73 +262,11 @@ EOF
     fi
 }
 
-_ec2_amis() {
-    # Lists AMIs.
-    local help_text="Usage: ec2 amis [options]
-    Lists latest amazon linux AMIs for the region.
-
-    Options:
-    --help       Display this help message
-
-    Examples:
-    ec2 amis | jtbl
-    "
-
-    if [[ "$*" == *"--help"* ]]; then
-        echo "$help_text"
-        return 0
-    fi
-
-    aws ec2 describe-images \
-        --owners amazon \
-        --filters "Name=name,Values=amzn2-ami-hvm-*-x86_64-gp2" \
-        --query 'sort_by(Images,&CreationDate)[-1].{ID:ImageId,Name:Name,CreationDate:CreationDate}' \
-        --output json
-
-    return 1
-}
-
-_ec2_terminate() {
-    # Terminates an EC2 instance.
-    local help_text="Usage: ec2 terminate <instance-id> [options]
-    Terminates the specified EC2 instance.
-
-    Arguments:
-    instance-id  The ID of the EC2 instance to terminate.
-
-    Options:
-    --help       Display this help message
-
-    Examples:
-    ec2 terminate i-0123456789abcdef0
-    "
-
-    if [[ "$1" == "--help" ]]; then
-        echo "$help_text"
-        return 0
-    fi
-    if [[ -z "$1" ]]; then # Check for missing instance-id separately
-        echo "Error: Instance ID is missing."
-        echo "$help_text" # Show help if instance-id is missing
-        return 1
-    fi
-
-    local instance_id="$1"
-    echo "Attempting to terminate instance ${instance_id}..."
-    if aws ec2 terminate-instances --instance-ids "${instance_id}"; then
-        echo "Successfully initiated termination for instance ${instance_id}."
-        echo "Note: Termination can take a few minutes to complete."
-    else
-        echo "Error terminating instance ${instance_id}. Check AWS CLI output for details."
-        return 1
-    fi
-}
-
 _ec2_sg_rule_remove() {
     # Removes a rule from a security group by its rule ID.
     local help_text
     read -r -d '' help_text <<'EOF'
-Usage: ec2 sg-rule-remove --rule-id <security-group-rule-id> [options]
+Usage: ec2 sg rule-remove --rule-id <security-group-rule-id> [options]
     Removes a specific rule from a security group using its ID.
 
     Arguments:
@@ -338,7 +276,7 @@ Usage: ec2 sg-rule-remove --rule-id <security-group-rule-id> [options]
     --help          Display this help message
 
     Examples:
-    ec2 sg-rule-remove --rule-id sgr-0123456789abcdef0
+    ec2 sg rule-remove --rule-id sgr-0123456789abcdef0
 EOF
 
     local rule_id=""
@@ -354,16 +292,16 @@ EOF
             fi
             rule_id="$2"
             shift 2
-            ;;
+            ;; 
         --help)
             echo "$help_text"
             return 0
-            ;;
+            ;; 
         *)
             echo "Error: Unknown option or argument: $1"
             echo "$help_text"
             return 1
-            ;;
+            ;; 
         esac
     done
 
@@ -437,6 +375,136 @@ EOF
     fi
 }
 
+_ec2_sg_delete() {
+    # Deletes a security group.
+    local help_text="Usage: ec2 sg delete <security-group-id> [options]
+    Deletes the specified security group.
+
+    Arguments:
+    security-group-id  The ID of the security group to delete.
+
+    Options:
+    --help       Display this help message
+
+    Examples:
+    ec2 sg delete sg-0123456789abcdef0
+    "
+
+    if [[ "$1" == "--help" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+    if [[ -z "$1" ]]; then # Check for missing security-group-id separately
+        echo "$help_text"  # Show help if security-group-id is missing
+        return 1
+    fi
+
+    local sg_id="$1"
+    aws ec2 delete-security-group --group-id "${sg_id}"
+}
+
+_ec2_sg() {
+    local command="$1"
+    shift
+
+    case "$command" in
+    list)
+        _ec2_sg_list "$@"
+        ;; 
+    rules)
+        _ec2_sg_rules "$@"
+        ;; 
+    rule-add)
+        _ec2_sg_rule_add "$@"
+        ;; 
+    rule-remove)
+        _ec2_sg_rule_remove "$@"
+        ;; 
+    delete)
+        _ec2_sg_delete "$@"
+        ;; 
+    --help | -h)
+        echo "Usage: ec2 sg <command> [options]"
+        echo "Commands:"
+        echo "  list         List security groups"
+        echo "  rules        List security group rules"
+        echo "  rule-add     Add a rule to a security group (from JSON file)"
+        echo "  rule-remove  Remove a rule from a security group (by rule ID)"
+        echo "  delete       Delete a security group"
+        echo ""
+        echo "Run 'ec2 sg <command> --help' for command-specific help."
+        return 0
+        ;; 
+    *)
+        echo "Unknown sg command: $command"
+        echo "Run 'ec2 sg --help' for a list of commands."
+        return 1
+        ;; 
+    esac
+}
+
+_ec2_amis() {
+    # Lists AMIs.
+    local help_text="Usage: ec2 amis [options]
+    Lists latest amazon linux AMIs for the region.
+
+    Options:
+    --help       Display this help message
+
+    Examples:
+    ec2 amis | jtbl
+    "
+
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    aws ec2 describe-images \
+        --owners amazon \
+        --filters "Name=name,Values=amzn2-ami-hvm-*-x86_64-gp2" \
+        --query 'sort_by(Images,&CreationDate)[-1].{ID:ImageId,Name:Name,CreationDate:CreationDate}' \
+        --output json
+
+    return 1
+}
+
+_ec2_terminate() {
+    # Terminates an EC2 instance.
+    local help_text="Usage: ec2 terminate <instance-id> [options]
+    Terminates the specified EC2 instance.
+
+    Arguments:
+    instance-id  The ID of the EC2 instance to terminate.
+
+    Options:
+    --help       Display this help message
+
+    Examples:
+    ec2 terminate i-0123456789abcdef0
+    "
+
+    if [[ "$1" == "--help" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+    if [[ -z "$1" ]]; then # Check for missing instance-id separately
+        echo "Error: Instance ID is missing."
+        echo "$help_text" # Show help if instance-id is missing
+        return 1
+    fi
+
+    local instance_id="$1"
+    echo "Attempting to terminate instance ${instance_id}..."
+    if aws ec2 terminate-instances --instance-ids "${instance_id}"; then
+        echo "Successfully initiated termination for instance ${instance_id}."
+        echo "Note: Termination can take a few minutes to complete."
+    else
+        echo "Error terminating instance ${instance_id}. Check AWS CLI output for details."
+        return 1
+    fi
+}
+
 _ec2_nacls() {
     # Manages Network ACLs (NACLs).
     local help_text="Usage: ec2 nacls [subnet-id] [options]
@@ -497,56 +565,44 @@ ec2() {
     case "$command" in
     list)
         _ec2_list "$@"
-        ;;
+        ;; 
     start)
         _ec2_start "$1"
-        ;;
+        ;; 
     stop)
         _ec2_stop "$1"
-        ;;
-    sg-list)
-        _ec2_list_security_groups "$@"
-        ;;
-    sg-rules)
-        _ec2_list_security_group_rules "$@"
-        ;;
-    sg-rule-add)
-        _ec2_sg_rule_add "$@" # Pass all args for its own parsing
-        ;;
-    sg-rule-remove)
-        _ec2_sg_rule_remove "$@" # Pass all args for its own parsing
-        ;;
+        ;; 
+    sg)
+        _ec2_sg "$@"
+        ;; 
     amis)
         _ec2_amis "$@"
-        ;;
+        ;; 
     terminate)
         _ec2_terminate "$1"
-        ;;
+        ;; 
     nacls)
         _ec2_nacls "$@"
-        ;;
+        ;; 
     --help | -h)
         echo "Usage: ec2 <command> [options]"
         echo "Commands:"
         echo "  list         List EC2 instances"
         echo "  start        Start an EC2 instance"
         echo "  stop         Stop an EC2 instance"
-        echo "  sg-list      List security groups"
-        echo "  sg-rules     List security group rules"
-        echo "  sg-rule-add  Add a rule to a security group (JSON spec)"
-        echo "  sg-rule-remove Remove a rule from a security group (by rule ID)"
+        echo "  sg           Manage security groups"
         echo "  amis         List AMIs (tabular)"
         echo "  terminate    Terminate an EC2 instance"
         echo "  nacls        Manage Network ACLs"
         echo ""
         echo "Run 'ec2 <command> --help' for command-specific help."
         return 0 # Ensure help exits with 0
-        ;;
+        ;; 
     *)
         echo "Unknown command: $command"
         echo "Run 'ec2 --help' for a list of commands."
         return 1
-        ;;
+        ;; 
     esac
 }
 
