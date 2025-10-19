@@ -258,8 +258,55 @@ iam_role_assume() {
     echo "export AWS_SECURITY_TOKEN=$(echo "$resp" | jq -r '.Credentials.SessionToken')"
 }
 
+iam_role_delete() {
+    # Delete an IAM role by name, cleaning up attachments first.
+    # Usage: iam role --delete <role_name>
+    local role_name="$1"
+
+    if [ -z "$role_name" ]; then
+        echo "Error: role name is required for --delete" >&2
+        return 1
+    fi
+
+    # Detach attached managed policies
+    local attached_json
+    if attached_json=$(aws --output json iam list-attached-role-policies --role-name "$role_name" 2>/dev/null); then
+        echo "$attached_json" | jq -r '.AttachedPolicies[]?.PolicyArn' | while read -r arn; do
+            [ -z "$arn" ] && continue
+            aws iam detach-role-policy --role-name "$role_name" --policy-arn "$arn" >/dev/null 2>&1 || true
+        done
+    fi
+
+    # Delete inline policies
+    local inline_json
+    if inline_json=$(aws --output json iam list-role-policies --role-name "$role_name" 2>/dev/null); then
+        echo "$inline_json" | jq -r '.PolicyNames[]?' | while read -r pname; do
+            [ -z "$pname" ] && continue
+            aws iam delete-role-policy --role-name "$role_name" --policy-name "$pname" >/dev/null 2>&1 || true
+        done
+    fi
+
+    # Remove from instance profiles
+    local profiles_json
+    if profiles_json=$(aws --output json iam list-instance-profiles-for-role --role-name "$role_name" 2>/dev/null); then
+        echo "$profiles_json" | jq -r '.InstanceProfiles[]?.InstanceProfileName' | while read -r ipname; do
+            [ -z "$ipname" ] && continue
+            aws iam remove-role-from-instance-profile --instance-profile-name "$ipname" --role-name "$role_name" >/dev/null 2>&1 || true
+        done
+    fi
+
+    # Finally, delete role
+    if aws iam delete-role --role-name "$role_name"; then
+        echo "Deleted role '$role_name'"
+        return 0
+    else
+        echo "Failed to delete role '$role_name'" >&2
+        return 1
+    fi
+}
+
 iam_role() {
-    local help_text="Usage: iam role [role_name]\n       iam role update <role_name> <json_path>\n       iam role assume <role_name_or_arn>
+    local help_text="Usage: iam role [role_name]\n       iam role --delete <role_name>\n       iam role update <role_name> <json_path>\n       iam role assume <role_name_or_arn>
 
     Without a role name, a list of IAM roles is returned. If a role name is provided, details of the role are returned.
 
@@ -270,7 +317,8 @@ iam_role() {
     - To assume a role and emit credentials, use 'iam role assume'.
 
     Options:
-    --help        Display this help message"
+    --help        Display this help message
+    --delete      Delete the specified role (detaches policies and removes from instance profiles first)"
 
     # Subcommands take precedence so their --help is respected
     if [ "$1" = "assume" ]; then
@@ -281,6 +329,19 @@ iam_role() {
     if [ "$1" = "update" ]; then
         shift
         iam_role_update "$@"
+        return $?
+    fi
+
+    # Support delete flag either before or after the role name
+    if [ "$1" = "--delete" ] || [ "$2" = "--delete" ]; then
+        # Determine role name position
+        local rn
+        if [ "$1" = "--delete" ]; then
+            rn="$2"
+        else
+            rn="$1"
+        fi
+        iam_role_delete "$rn"
         return $?
     fi
 
