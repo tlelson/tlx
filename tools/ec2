@@ -5,9 +5,9 @@
 # Tools for managing EC2 instances.
 
 _ec2_list() {
-    # Describes EC2 instances, showing ID, Name, State, Public IP, and Private IP.
+    # Describes EC2 instances, showing ID, Name, State, Public IP, Private IP, and Subnet ID.
     local help_text="Usage: ec2 list [options]
-    Lists EC2 instances with their ID, Name, State, Public IP, and Private IP.
+    Lists EC2 instances with their ID, Name, State, Public IP, Private IP, and Subnet ID.
 
     Returns jsonlines.
 
@@ -31,6 +31,7 @@ _ec2_list() {
             State: .State.Name,
             PublicIpAddress: (if .PublicIpAddress == null then "" else .PublicIpAddress end),
             PrivateIpAddress: (if .PrivateIpAddress == null then "" else .PrivateIpAddress end),
+            SubnetId: (if .SubnetId == null then "" else .SubnetId end),
             SecurityGroupIds: [.SecurityGroups[]?.GroupId]
         }
     '
