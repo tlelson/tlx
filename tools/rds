@@ -6,6 +6,7 @@ rds() {
     Commands:
     list                 List RDS DB clusters as jsonlines
     get CLUSTER_ID       Describe a specific DB cluster
+    instance INSTANCE_ID Describe a specific DB instance
 
     Options:
     --help, -h           Display this help message
@@ -38,6 +39,9 @@ rds() {
         ;;
     get)
         rds_get "$@"
+        ;;
+    instance)
+        rds_instance "$@"
         ;;
     *)
         echo "Unknown command: $command"
@@ -111,6 +115,44 @@ rds_get() {
     # Emit the first (and only) cluster object, or error if none found
     echo "$describe_output" | jq -e '.DBClusters | if length > 0 then .[0] else empty end' || {
         echo "Error: Cluster not found: $cluster_id" >&2
+        return 1
+    }
+}
+
+rds_instance() {
+    local help_text="Usage: rds instance INSTANCE_ID [options]
+
+    Arguments:
+    INSTANCE_ID         The DB instance identifier or ARN
+
+    Options:
+    --help, -h          Display this help message
+
+    Output:
+    A single JSON object describing the DB instance.
+    "
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [ -z "$1" ]; then
+        echo "Error: INSTANCE_ID is required"
+        echo "$help_text"
+        return 1
+    fi
+
+    local instance_id="$1"
+
+    local describe_output
+    if ! describe_output=$(aws rds describe-db-instances --db-instance-identifier "$instance_id" --output json); then
+        return 1
+    fi
+
+    # Emit the first (and only) instance object, or error if none found
+    echo "$describe_output" | jq -e '.DBInstances | if length > 0 then .[0] else empty end' || {
+        echo "Error: Instance not found: $instance_id" >&2
         return 1
     }
 }
