@@ -306,7 +306,11 @@ iam_role_delete() {
 }
 
 iam_role() {
-    local help_text="Usage: iam role [role_name]\n       iam role --delete <role_name>\n       iam role update <role_name> <json_path>\n       iam role assume <role_name_or_arn>
+    local help_text="Usage: iam role [role_name]
+
+    iam role --delete <role_name>
+    iam role update <role_name> <json_path>
+    iam role assume <role_name_or_arn>
 
     Without a role name, a list of IAM roles is returned. If a role name is provided, details of the role are returned.
 
