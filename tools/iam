@@ -355,7 +355,11 @@ iam_role() {
     fi
 
     if [ -z "$1" ]; then
-        aws --output json iam list-roles | jq -r '.Roles[].Arn | split("/") | .[1]'
+        # List unique role identifiers. Previously this parsed the ARN path and
+        # printed the first segment after 'role/', which resulted in many lines
+        # showing just 'service-role' or 'aws-service-role'. The RoleName field
+        # is already unique within an account, so list that instead.
+        aws --output json iam list-roles | jq -r '.Roles[].RoleName'
     else
         role_name="$1"
 
