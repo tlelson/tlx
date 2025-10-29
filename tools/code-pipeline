@@ -1,0 +1,608 @@
+#!/usr/bin/env bash
+
+# Determine the command name the user invoked so help text can reference it.
+ROOT_CMD=${TLX_CP_CMD:-$(basename "$0")}
+case "$ROOT_CMD" in
+cpl)
+    ROOT_CMD="cpl"
+    ALT_CMD="code-pipeline"
+    ;;
+code-pipeline | code-pipeline.sh)
+    ROOT_CMD="code-pipeline"
+    ALT_CMD="cpl"
+    ;;
+*)
+    ROOT_CMD="code-pipeline"
+    ALT_CMD="cpl"
+    ;;
+esac
+
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+cp_list_pipelines() {
+    aws --output json codepipeline list-pipelines | jq -r '.pipelines[].name'
+}
+
+cp_exec_tool_path() {
+    local candidate="${SCRIPT_DIR}/code-pipeline-executions"
+    if [[ -x "$candidate" ]]; then
+        echo "$candidate"
+        return 0
+    fi
+
+    candidate=$(command -v code-pipeline-executions 2>/dev/null || true)
+    if [[ -n "$candidate" ]]; then
+        echo "$candidate"
+        return 0
+    fi
+
+    return 1
+}
+
+cp_cmd_list() {
+    local invocation="${ROOT_CMD} list"
+
+    if [[ $# -gt 0 ]]; then
+        case "$1" in
+        --help | -h)
+            cat <<EOF
+Usage: ${invocation}
+
+List all CodePipeline pipeline names.
+You can also invoke this command as '${ALT_CMD} list'.
+EOF
+            return 0
+            ;;
+        *)
+            echo "Unknown argument: $1" >&2
+            echo "Run '${invocation} --help' for usage." >&2
+            return 1
+            ;;
+        esac
+    fi
+
+    cp_list_pipelines
+}
+
+cp_cmd_start() {
+    local invocation="${ROOT_CMD} start"
+
+    if [[ $# -eq 0 ]]; then
+        cat <<EOF
+Usage: ${invocation} PIPELINE_NAME
+
+Start a new execution of the specified pipeline.
+You can also invoke this command as '${ALT_CMD} start'.
+EOF
+        return 1
+    fi
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        cat <<EOF
+Usage: ${invocation} PIPELINE_NAME
+
+Start a new execution of the specified pipeline.
+You can also invoke this command as '${ALT_CMD} start'.
+EOF
+        return 0
+    fi
+
+    if [[ $# -gt 1 ]]; then
+        echo "Too many arguments." >&2
+        echo "Run '${invocation} --help' for usage." >&2
+        return 1
+    fi
+
+    local pipeline_name="$1"
+    aws codepipeline start-pipeline-execution --name "$pipeline_name" | jq -c
+}
+
+cp_state_impl() {
+    local invocation="$1"
+    shift
+
+    local help_text
+    help_text=$(
+        cat <<EOF
+Usage: ${invocation} [options] [positional Args] [Optional Args]
+Summarised current state of the specified pipeline.
+
+Options:
+-g/--guess      Guess the pipeline name from non-exact 'pipeline_name'
+-f/--full       Full state. Not summarised.
+--help          Display this help message
+
+Positional Arguments
+pipeline_name   string matching one pipeline name. e.g 'meta'
+
+Optional Arguments
+stage_name      StageName to restrict output to. e.g 'Dev'
+
+Examples:
+${invocation} \$p | jtbl
+${invocation} \$p | jq -c '.stages[] | {
+    stageName, status, pipelineExecutionId, time
+}' | jtbl
+
+You can also invoke this command as '${ALT_CMD} state'.
+EOF
+    )
+
+    local full=0
+    local guess_name=0
+    local pipeline_name=""
+    local stage_name=""
+    local names=""
+    local count=0
+    local state=""
+    local result=""
+
+    if [[ $# -eq 0 ]]; then
+        echo "$help_text"
+        return 1
+    fi
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        -f | --full)
+            full=1
+            shift
+            ;;
+        -g | --guess)
+            guess_name=1
+            shift
+            ;;
+        --help | -h)
+            echo "$help_text"
+            return 0
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            echo "$help_text"
+            return 1
+            ;;
+        *)
+            if [[ -z "$pipeline_name" ]]; then
+                pipeline_name="$1"
+                shift
+            elif [[ -z "$stage_name" ]]; then
+                stage_name="$1"
+                shift
+            else
+                echo "Unexpected argument: $1"
+                echo "$help_text"
+                return 1
+            fi
+            ;;
+        esac
+    done
+
+    if ((guess_name == 1)); then
+        names=$(cp_list_pipelines | grep "$pipeline_name")
+        count=$(wc -l <<<"$names")
+
+        if ((count == 0)); then
+            echo "could not find a pipeline containing pattern: $pipeline_name"
+            return 1
+        fi
+
+        if ((count > 1)); then
+            echo "Ambiguous pipeline glob pattern: $pipeline_name"
+            echo "Got $count matching pipelines: "
+            while IFS= read -r line; do
+                echo -e "\t$line"
+            done <<<"$names"
+            return 1
+        fi
+
+        pipeline_name="$names"
+    fi
+
+    state=$(aws --output json codepipeline get-pipeline-state --name "$pipeline_name")
+
+    if ((full == 1)); then
+        echo "${state}" | jq
+        return 0
+    fi
+
+    result=$(echo "${state}" | jq '
+        {pipelineName, updated, stages: [
+            .stageStates[] |
+            if ( .stageName == "Source") and (.latestExecution.status == "Succeeded")  then
+                { stageName , status: .latestExecution.status,
+                    sources: [
+                        .actionStates[] |
+                            if (.latestExecution != null) and ( .latestExecution.summary|startswith("{") ) then
+                                {
+                                    actionName, lastStatusChange: .latestExecution.lastStatusChange,
+                                    msg: .latestExecution.summary | fromjson |
+                                        .CommitMessage|split("\n")[0],
+                                }
+                            else
+                                {
+                                    actionName, lastStatusChange: .latestExecution.lastStatusChange,
+                                    msg: .latestExecution.summary
+                                }
+                            end
+                    ]
+                }
+            elif .latestExecution.status == "Succeeded" then
+                { stageName , status: .latestExecution.status,
+                    pipelineExecutionId: .latestExecution.pipelineExecutionId,
+                    transitionEnabled: .inboundTransitionState.enabled,
+                    time: [ .actionStates[].latestExecution.lastStatusChange | select(. != null ) ] | sort | .[-1] ,
+                }
+            else
+                { stageName, status: .latestExecution.status,
+                    pipelineExecutionId: .latestExecution.pipelineExecutionId,
+                    transitionEnabled: .inboundTransitionState.enabled,
+                    actions: [ .actionStates[]? | select(.latestExecution.status) |
+                    if .latestExecution.status == "Failed" then
+                        { actionName , status: .latestExecution.status,
+                        summary: .latestExecution.summary,
+                        message: .latestExecution.errorDetails.message? ,
+                        time: .latestExecution.lastStatusChange? ,
+                        executionId: .latestExecution.actionExecutionId,
+                        url: .latestExecution.externalExecutionUrl,
+                    } | delpaths([. | to_entries | .[] | select(.value == null) | [.key]])
+                    elif .latestExecution.status == "InProgress" then
+                        { actionName , status: .latestExecution.status,
+                        token: .latestExecution.token,
+                        }
+                    else
+                        { actionName , status: .latestExecution.status }
+                    end
+                ] }
+            end
+            ]
+        }
+        ')
+
+    if [[ -z "$stage_name" ]]; then
+        echo "$result" | jq
+    else
+        echo "$result" | jq "{pipelineName, updated,
+            stage: .stages[]| select(.stageName==\"$stage_name\")
+        }"
+    fi
+}
+
+cp_cmd_state() {
+    cp_state_impl "${ROOT_CMD} state" "$@"
+}
+
+cp_cmd_approve() {
+    local invocation="${ROOT_CMD} approve"
+
+    if [[ $# -eq 0 ]]; then
+        cat <<EOF
+Usage: ${invocation} PIPELINE_NAME [STAGE_NAME]
+
+Approve a pending approval action. Provide the stage name to disambiguate multiple approvals.
+You can also invoke this command as '${ALT_CMD} approve'.
+EOF
+        return 1
+    fi
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        cat <<EOF
+Usage: ${invocation} PIPELINE_NAME [STAGE_NAME]
+
+Approve a pending approval action. Provide the stage name to disambiguate multiple approvals.
+You can also invoke this command as '${ALT_CMD} approve'.
+EOF
+        return 0
+    fi
+
+    if [[ $# -gt 2 ]]; then
+        echo "Too many arguments." >&2
+        echo "Run '${invocation} --help' for usage." >&2
+        return 1
+    fi
+
+    local pipeline_name="$1"
+    local stage_to_approve=""
+    local pipeline=""
+    local action=""
+    local action_name=""
+    local token=""
+
+    pipeline=$(cp_state_impl "${ROOT_CMD} state" "$pipeline_name") || return $?
+
+    if [[ -z "$2" ]]; then
+        readarray -t approvable_stages < <(echo "${pipeline}" | jq -r '[.stages[] | select(.stageName|test("Approval.*")) | select(.status == "InProgress")  | .stageName] | .[]')
+
+        if [[ ${#approvable_stages[@]} -ne 1 ]]; then
+            echo "Approvable stages are: "
+            for stage in "${approvable_stages[@]}"; do
+                stage=$(echo "$stage" | tr -d '\n')
+                echo "\"${stage}\""
+            done
+            echo "Provide the stage name explicitly."
+            return 1
+        fi
+
+        stage_to_approve=$(echo "${approvable_stages[0]}" | tr -d '\n')
+    else
+        stage_to_approve="$2"
+    fi
+
+    echo "approving stage: ${stage_to_approve}"
+
+    action=$(echo "${pipeline}" | jq -rc --arg stage "${stage_to_approve}" '.stages[] | select(.stageName == $stage) | .actions[] | select(.status == "InProgress") | {actionName, token}')
+
+    if [[ -z "$action" ]]; then
+        echo "Stage has no 'InProgress' actions. Rerun the pipeline first."
+        return 1
+    fi
+
+    action_name=$(echo "$action" | jq -r '.actionName')
+    token=$(echo "$action" | jq -r '.token')
+
+    if [[ -z "$token" ]]; then
+        echo "Could not get a 'token' for this stage."
+        return 1
+    fi
+
+    aws --output json codepipeline put-approval-result \
+        --pipeline-name "${pipeline_name}" \
+        --stage-name "${stage_to_approve}" \
+        --action-name "${action_name}" \
+        --result 'summary="",status=Approved' \
+        --token "${token}"
+}
+
+cp_cmd_retry() {
+    local invocation="${ROOT_CMD} retry"
+
+    if [[ $# -eq 0 ]]; then
+        cat <<EOF
+Usage: ${invocation} PIPELINE_NAME STAGE_NAME
+
+Retry failed actions within the specified stage.
+You can also invoke this command as '${ALT_CMD} retry'.
+EOF
+        return 1
+    fi
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        cat <<EOF
+Usage: ${invocation} PIPELINE_NAME STAGE_NAME
+
+Retry failed actions within the specified stage.
+You can also invoke this command as '${ALT_CMD} retry'.
+EOF
+        return 0
+    fi
+
+    if [[ $# -ne 2 ]]; then
+        echo "Unexpected arguments." >&2
+        echo "Run '${invocation} --help' for usage." >&2
+        return 1
+    fi
+
+    local pipeline_name="$1"
+    local stage="$2"
+    local pipeline=""
+    local execution_id=""
+
+    pipeline=$(cp_state_impl "${ROOT_CMD} state" "$pipeline_name") || return $?
+    execution_id=$(echo "$pipeline" | jq -r --arg stage "$stage" '.stages[] | select(.stageName==$stage) | .pipelineExecutionId')
+
+    if [[ -z "$execution_id" ]]; then
+        echo "Could not get a 'execution_id' for this stage."
+        return 1
+    fi
+
+    aws codepipeline retry-stage-execution \
+        --pipeline-name "${pipeline_name}" \
+        --stage-name "${stage}" \
+        --pipeline-execution-id "${execution_id}" \
+        --retry-mode FAILED_ACTIONS | jq -c
+}
+
+cp_cmd_status() {
+    local invocation="${ROOT_CMD} status"
+
+    if [[ "$*" == *"--help"* ]]; then
+        cat <<EOF
+Usage: ${invocation} [PIPELINE_NAME_FILTER]
+
+Summarise the latest execution for each pipeline. Provide a glob filter to limit the results.
+You can also invoke this command as '${ALT_CMD} status'.
+EOF
+        return 0
+    fi
+
+    local filter_pattern='"*"'
+    local cmd=''
+
+    if [[ $# -ne 0 ]]; then
+        filter_pattern="$*"
+    fi
+
+    cmd='
+        aws --output json codepipeline list-pipeline-executions \
+            --pipeline-name "$1" --max-items 1 | jq -c --arg p "$1" \
+            '"'"'
+            if (.pipelineExecutionSummaries | length) == 0 then
+                {Name: $p, Status: "NO_EXECUTIONS", LastRun: "N/A"}
+            else
+                .pipelineExecutionSummaries[0] | {
+                    Name: $p, Status: .status?,
+                    LastRun: .startTime | sub(":[0-9]{2}\\.[0-9]{6}";"")
+                }
+            end
+            '"'"'
+    '
+
+    aws --output json codepipeline list-pipelines | jq '.pipelines[].name' |
+        grep "${filter_pattern}" | xargs -P32 -I {} sh -c "$cmd" _ {}
+}
+
+cp_cmd_definition() {
+    local invocation="${ROOT_CMD} definition"
+
+    if [[ $# -eq 0 ]]; then
+        cat <<EOF
+Usage: ${invocation} PIPELINE_NAME [VERSION]
+
+Fetch the pipeline definition as JSON. Specify a version to inspect historical definitions.
+You can also invoke this command as '${ALT_CMD} definition'.
+EOF
+        return 1
+    fi
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        cat <<EOF
+Usage: ${invocation} PIPELINE_NAME [VERSION]
+
+Fetch the pipeline definition as JSON. Specify a version to inspect historical definitions.
+You can also invoke this command as '${ALT_CMD} definition'.
+EOF
+        return 0
+    fi
+
+    local pipeline_name="$1"
+    local version="${2:-}"
+    local cmd="aws --output json codepipeline get-pipeline --name \"$pipeline_name\""
+
+    if [[ -n "$version" ]]; then
+        cmd="$cmd --pipeline-version $version"
+    fi
+
+    eval "$cmd" | jq '{pipeline}'
+}
+
+cp_cmd_update() {
+    local invocation="${ROOT_CMD} update"
+
+    if [[ $# -eq 0 ]]; then
+        cat <<EOF
+Usage: ${invocation} FILE_PATH
+
+Update a pipeline using the provided YAML definition file.
+You can also invoke this command as '${ALT_CMD} update'.
+EOF
+        return 1
+    fi
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        cat <<EOF
+Usage: ${invocation} FILE_PATH
+
+Update a pipeline using the provided YAML definition file.
+You can also invoke this command as '${ALT_CMD} update'.
+EOF
+        return 0
+    fi
+
+    if [[ $# -gt 1 ]]; then
+        echo "Too many arguments." >&2
+        echo "Run '${invocation} --help' for usage." >&2
+        return 1
+    fi
+
+    local file_path="$1"
+    aws codepipeline update-pipeline --cli-input-yaml "file://$file_path" >/dev/null
+}
+
+cp_cmd_execs() {
+    local invocation="${ROOT_CMD} execs"
+    local exec_tool=""
+
+    if ! exec_tool=$(cp_exec_tool_path); then
+        echo "code-pipeline-executions helper not found in ${SCRIPT_DIR} or PATH." >&2
+        return 1
+    fi
+
+    for arg in "$@"; do
+        if [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
+            "$exec_tool" --help
+            return 0
+        fi
+    done
+
+    if [[ $# -eq 0 ]]; then
+        echo "Usage: ${invocation} PIPELINE_NAME [COUNT]" >&2
+        echo "Run '${invocation} --help' for details." >&2
+        return 1
+    fi
+
+    "$exec_tool" "$@" | jq -c '.[]'
+}
+
+cp_print_usage() {
+    cat <<EOF
+Usage: ${ROOT_CMD} <command> [args]
+
+Both '${ROOT_CMD}' and '${ALT_CMD}' can be used interchangeably.
+
+Commands:
+  list         List pipeline names
+  start        Trigger a pipeline execution
+  state        Summarise current pipeline state
+  approve      Approve a pending approval action
+  retry        Retry a failed stage execution
+  status       Summarise latest execution per pipeline
+  definition   Fetch a pipeline definition
+  update       Update a pipeline using a YAML definition
+  execs        List recent pipeline executions
+
+Run '${ROOT_CMD} help <command>' for command-specific help.
+EOF
+}
+
+cp_run_subcommand() {
+    local subcommand="$1"
+    shift
+
+    case "$subcommand" in
+    list) cp_cmd_list "$@" ;;
+    start) cp_cmd_start "$@" ;;
+    state) cp_cmd_state "$@" ;;
+    approve) cp_cmd_approve "$@" ;;
+    retry) cp_cmd_retry "$@" ;;
+    status) cp_cmd_status "$@" ;;
+    definition) cp_cmd_definition "$@" ;;
+    update) cp_cmd_update "$@" ;;
+    execs) cp_cmd_execs "$@" ;;
+    *)
+        echo "Unknown command: $subcommand" >&2
+        cp_print_usage >&2
+        return 1
+        ;;
+    esac
+}
+
+cp_main() {
+    if [[ $# -eq 0 ]]; then
+        cp_print_usage >&2
+        return 1
+    fi
+
+    case "$1" in
+    --help | -h)
+        cp_print_usage
+        return 0
+        ;;
+    help)
+        if [[ $# -eq 1 ]]; then
+            cp_print_usage
+            return 0
+        fi
+        cp_run_subcommand "$2" --help
+        return $?
+        ;;
+    *)
+        local subcommand="$1"
+        shift
+        cp_run_subcommand "$subcommand" "$@"
+        return $?
+        ;;
+    esac
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    cp_main "$@"
+fi

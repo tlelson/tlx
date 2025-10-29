@@ -1,24 +1,32 @@
 #!/usr/bin/env python
 
-import argparse
-from concurrent.futures import ThreadPoolExecutor as TPE
 import asyncio
-from typing import Generator, Dict
-import boto3
-from botocore import config
 import json
 import logging
 from datetime import datetime
+import argparse
+from concurrent.futures import ThreadPoolExecutor as TPE
+from typing import Any, Dict, Generator, TYPE_CHECKING
+
+import boto3
+from botocore import config
 
 # python -m pip install -U 'boto3-stubs[essential]'
 # python -m pip install -U 'boto3-stubs[codepipeline]'
-from mypy_boto3_codepipeline.type_defs import (
-    ListPipelineExecutionsOutputTypeDef,
-    PipelineExecutionSummaryTypeDef as PES,
-    ActionExecutionFilterTypeDef as AEF,
-    ActionExecutionDetailTypeDef as ExecutionDetail,
-)
-from mypy_boto3_codepipeline.client import CodePipelineClient
+if TYPE_CHECKING:
+    from mypy_boto3_codepipeline.type_defs import (
+        ListPipelineExecutionsOutputTypeDef,
+        PipelineExecutionSummaryTypeDef as PES,
+        ActionExecutionFilterTypeDef as AEF,
+        ActionExecutionDetailTypeDef as ExecutionDetail,
+    )
+    from mypy_boto3_codepipeline.client import CodePipelineClient
+else:
+    ListPipelineExecutionsOutputTypeDef = Dict[str, Any]
+    PES = Dict[str, Any]
+    AEF = Dict[str, Any]
+    ExecutionDetail = Dict[str, Any]
+    CodePipelineClient = Any
 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger()

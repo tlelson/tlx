@@ -60,7 +60,7 @@ They are not production grade.
 
 ### Standard features
 
-1. They start with the name of the service so that you can hit tab and see the options you expect. E.g: `code-pipeline` or `ecs`. Some may have a short alias such as `cp-` for `code-pipeline` because this is meant to make the aws cli more intuitive.  The command you want, should be guessable.
+1. They start with the name of the service so that you can hit tab and see the options you expect. E.g: `code-pipeline` or `ecs`. Some also provide a short alias such as `cp` for `code-pipeline` because this is meant to make the aws cli more intuitive.  The command you want should be guessable.
 
 2. If the usage isn't obvious (e.g `ecs-clusters` ) then they have a `--help` with an example.
 
@@ -80,12 +80,12 @@ Otherwise source the `.tools/rcfile` in your own way.
 
 #### Find differences to be deployed by a Cope-Pipeline deployment
 
-Find your executionId's to compare somehow.  Maybe by using `cp-state $p` to look at different stages.
+Find your executionId's to compare somehow.  Maybe by using `cp state $p` to look at different stages.
 
-Maybe you want to look at previous executions: `cp-execs $p 20 | grep -e 'Prod_Environment' | jtbl` to see when Prod was last deployed.
+Maybe you want to look at previous executions: `cp execs $p 20 | grep -e 'Prod_Environment' | jtbl` to see when Prod was last deployed.
 
-1. `cp-state $p` to show pipeline executionId between your stages (blocked by an approval)
-2. `cp-execs $p 30 | grep "exId1\|exId2" | jtbl` to get the Source hash.
+1. `cp state $p` to show pipeline executionId between your stages (blocked by an approval)
+2. `cp execs $p 30 | grep "exId1\|exId2" | jtbl` to get the Source hash.
 3. git log diff1..diff2
 
 ## Module Summary
