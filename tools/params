@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+
+params() {
+    local help_text="Usage: ${FUNCNAME[0]} [PARAMETER_NAME] [options]
+
+    Arguments:
+    PARAMETER_NAME      Optional. Fully qualified SSM parameter name.
+
+    Options:
+    --help, -h          Display this help message
+
+    Output:
+    Without a name: jsonlines of parameter metadata (Name, Type, Tier, DataType, LastModifiedDate, Description).
+    With a name: JSON payload of the parameter (decrypted when possible).
+
+    Examples:
+    params | jtbl
+    params /my/service/config
+    "
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [[ $# -gt 1 ]]; then
+        echo "Error: too many arguments" >&2
+        echo "$help_text"
+        return 1
+    fi
+
+    if [[ $# -eq 0 ]]; then
+        params_list
+    else
+        params_get "$1"
+    fi
+}
+
+params_list() {
+    aws --output json ssm describe-parameters | jq -c '.Parameters[] | {
+        Name,
+        Type,
+        Tier,
+        DataType,
+        LastModifiedDate,
+        Description
+    }'
+    return "${PIPESTATUS[0]}"
+}
+
+params_get() {
+    local parameter_name="$1"
+    aws --output json ssm get-parameter --name "$parameter_name" --with-decryption | jq '.Parameter'
+    return "${PIPESTATUS[0]}"
+}
+
+params "$@"
