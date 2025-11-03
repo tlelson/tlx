@@ -1,7 +1,30 @@
 #!/usr/bin/env bash
 
 events() {
+    local help_text="Usage: ${FUNCNAME[0]} STACK_NAME [LIMIT]
+
+    Arguments:
+    STACK_NAME            Name of the CloudFormation stack
+    LIMIT                 Optional. Max number of events to return (default 10)
+
+    Options:
+    --help                Display this help message
+
+    Output:
+    JSON array of recent stack events with fields:
+      ResourceType, LogicalResourceId, ResourceStatus, Timestamp, ResourceStatusReason
+
+    Examples:
+    ${FUNCNAME[0]} my-stack 20 | jtbl
+    ${FUNCNAME[0]} my-stack --help
+    "
+
     event_limit=10
+
+    if [[ "$*" == *"--help"* || "$*" == *"-h"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
 
     if [ -z "$1" ]; then
         echo "provide a stack name as the first argument"
@@ -19,6 +42,25 @@ events() {
 }
 
 failed() {
+    local help_text="Usage: ${FUNCNAME[0]} STACK_NAME [options]
+
+    Arguments:
+    STACK_NAME            Name of the CloudFormation stack
+
+    Options:
+    --help                Display this help message
+
+    Output:
+    JSON array of events with a FAILED status.
+
+    Examples:
+    ${FUNCNAME[0]} my-stack | jtbl
+    "
+
+    if [[ "$*" == *"--help"* || "$*" == *"-h"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
     if [ -z "$1" ]; then
         echo "provide a stack name as the first argument"
         return 1
@@ -30,10 +72,28 @@ failed() {
 }
 
 params() {
+    local help_text="Usage: ${FUNCNAME[0]} STACK_NAME [options]
+
+    Arguments:
+    STACK_NAME            Name of the CloudFormation stack
+
+    Options:
+    --help                Display this help message
+
+    Output:
+    JSON array of parameters for the stack. Useful as input for deploy.
+
+    Examples:
+    ${FUNCNAME[0]} my-stack | jtbl
+    "
+
+    if [[ "$*" == *"--help"* || "$*" == *"-h"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
 
     if [ -z "$1" ]; then
-        echo "Output is JSON by default because the output may be used as input for deploy."
-        echo "${FUNCNAME[0]} \$stack_name | jtbl"
+        echo "$help_text"
         return 1
     fi
     stack_name="$1"
@@ -55,7 +115,7 @@ status() {
     "
 
     # Check if the '--help' flag is present
-    if [[ "$*" == *"--help"* ]]; then
+    if [[ "$*" == *"--help"* || "$*" == *"-h"* ]]; then
         echo "$help_text"
         return 0
     fi
@@ -68,9 +128,27 @@ status() {
 }
 
 template() {
+    local help_text="Usage: ${FUNCNAME[0]} STACK_NAME [options]
+
+    Arguments:
+    STACK_NAME            Name of the CloudFormation stack
+
+    Options:
+    --help                Display this help message
+
+    Output:
+    The CloudFormation template body used to deploy the stack.
+
+    Examples:
+    ${FUNCNAME[0]} my-stack
+    "
+
+    if [[ "$*" == *"--help"* || "$*" == *"-h"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
     if [ -z "$1" ]; then
-        echo "Returns the template used to deploy a stack"
-        echo "${FUNCNAME[0]} \$stack_name"
+        echo "$help_text"
         return 1
     fi
     stack_name="$1"
@@ -95,6 +173,11 @@ resources() {
     Examples:
     ${FUNCNAME[0]} 'name' | grep 'IAM::Role' | jtbl
     "
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
 
     if [ -z "$1" ]; then
         echo "provide a stack name as the first argument"
@@ -129,7 +212,7 @@ deploy() {
     # Parse arguments
     while [[ $# -gt 0 ]]; do
         case "$1" in
-        --help)
+        --help|-h)
             echo "$help_text"
             return 0
             ;;
@@ -194,7 +277,7 @@ delete() {
             force=1
             shift
             ;;
-        --help)
+        --help|-h)
             echo "$help_text"
             return 0
             ;;
@@ -223,6 +306,11 @@ delete() {
     fi
 
     eval "${cmd}"
+}
+
+destroy() {
+    # Alias for delete
+    delete "$@"
 }
 
 change-set() {
@@ -258,7 +346,7 @@ change-set() {
     # Parse arguments
     while [[ $# -gt 0 ]]; do
         case "$1" in
-        --help)
+        --help|-h)
             echo "$help_text"
             return 0
             ;;
@@ -349,6 +437,9 @@ stack() {
     delete)
         delete "$@"
         ;;
+    destroy)
+        destroy "$@"
+        ;;
     change-set)
         change-set "$@"
         ;;
@@ -363,6 +454,7 @@ stack() {
         echo "  resources   List stack resources (tabular)"
         echo "  deploy      Deploy a stack"
         echo "  delete      Delete a stack"
+        echo "  destroy     Alias for delete"
         echo "  change-set  Manage change sets"
         echo ""
         echo "Run 'stack <command> --help' for command-specific help."
