@@ -27,6 +27,7 @@ All CLI applications have their own detailed help menus.  Currently available to
 
 | function | description |
 |---| --- |
+| `tlx` | lists all tools this package puts on your PATH |
 | `get-aws-creds` | returns temporary session credentials. Locally mock AWS runtime environments, debugging IAM etc |
 | `dynamo-batch-write` | loads scan results into a dynamo table.  Much better than `awscli` option |
 | `dynamo-clear-table` | empties the items from a dynamodb table |
