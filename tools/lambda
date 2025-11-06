@@ -10,8 +10,14 @@ lambda() {
     Options:
     -h, --help           Display this help message
 
+    Commands:
+    download <lambda_name> [--out|-o <file>] [--qualifier <alias|version>]
+                        Download the current deployment package to a local file.
+
     Output:
-    jsonlines if no name is provided or structured json if single lambda name provided.
+    - No name: jsonlines of basic function info
+    - With name: structured JSON of get-function-configuration with added field:
+        Tags (Lambda function tags map)
 
     Examples:
     lambda | grep alert | jtbl
@@ -35,6 +41,89 @@ lambda() {
         aws --output text lambda get-function --function-name "$2" --query 'Code.Location'
         return $?
     fi
+
+    # Subcommand: download
+    if [ "$1" = "download" ]; then
+        shift
+        local name="" out="" qualifier=""
+
+        # Parse args: first non-option is name
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --help|-h)
+                    echo "Usage: lambda download <lambda_name> [--out|-o <file>] [--qualifier <alias|version>]"
+                    return 0
+                    ;;
+                --out|-o)
+                    out="$2"; shift 2
+                    ;;
+                --qualifier)
+                    qualifier="$2"; shift 2
+                    ;;
+                --*)
+                    echo "Unknown option: $1" >&2
+                    return 1
+                    ;;
+                *)
+                    if [[ -z "$name" ]]; then
+                        name="$1"; shift
+                    else
+                        echo "Unexpected argument: $1" >&2
+                        return 1
+                    fi
+                    ;;
+            esac
+        done
+
+        if [[ -z "$name" ]]; then
+            echo "Error: lambda name is required" >&2
+            echo "Usage: lambda download <lambda_name> [--out|-o <file>] [--qualifier <alias|version>]" >&2
+            return 1
+        fi
+
+        local info url
+        if [[ -n "$qualifier" ]]; then
+            if ! info=$(aws --output json lambda get-function --function-name "$name" --qualifier "$qualifier"); then
+                return 1
+            fi
+        else
+            if ! info=$(aws --output json lambda get-function --function-name "$name"); then
+                return 1
+            fi
+        fi
+        url=$(echo "$info" | jq -r '.Code.Location')
+        if [[ -z "$url" || "$url" == "null" ]]; then
+            echo "Error: No package URL found for lambda '$name'" >&2
+            return 1
+        fi
+
+        if [[ -z "$out" ]]; then
+            # Derive filename from URL path
+            out=$(echo "$url" | sed -E 's#https?://[^/]+/([^?]+).*#\1#' | awk -F/ '{print $NF}')
+            [[ -z "$out" ]] && out="${name}.zip"
+        fi
+
+        if command -v curl >/dev/null 2>&1; then
+            if ! curl -fsSL "$url" -o "$out"; then
+                echo "Error: Download failed" >&2
+                return 1
+            fi
+        elif command -v wget >/dev/null 2>&1; then
+            if ! wget -q -O "$out" "$url"; then
+                echo "Error: Download failed" >&2
+                return 1
+            fi
+        else
+            echo "Error: Neither 'curl' nor 'wget' is available to download the package." >&2
+            echo "$url"
+            return 1
+        fi
+
+        local size
+        size=$(wc -c < "$out" | tr -d ' ')
+        jq -nc --arg File "$out" --argjson Bytes "$size" '{File: $File, Bytes: $Bytes}'
+        return 0
+    fi
     
     # No function name: list functions
     if [ -z "$1" ]; then
@@ -44,7 +133,15 @@ lambda() {
             LogGroup: .LoggingConfig.LogGroup,
         }'
     else
-        aws --output json lambda get-function-configuration --function-name "$1" | jq
+        # Describe a single lambda and include tags
+        local info arn tags_json
+        if ! info=$(aws --output json lambda get-function --function-name "$1"); then
+            return 1
+        fi
+        arn=$(echo "$info" | jq -r '.Configuration.FunctionArn')
+        # Fetch tags; default to empty object on failure
+        tags_json=$(aws --output json lambda list-tags --resource "$arn" 2>/dev/null | jq -c '.Tags // {}')
+        echo "$info" | jq --argjson tags "$tags_json" '.Configuration + {Tags: $tags}'
     fi
 }
 
