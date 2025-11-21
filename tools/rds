@@ -7,6 +7,8 @@ rds() {
     list                 List RDS DB clusters as jsonlines
     get CLUSTER_ID       Describe a specific DB cluster
     instance INSTANCE_ID Describe a specific DB instance
+    set-master-pass CLUSTER_ID NEW_PASSWORD
+                         Set the master user password for a DB cluster (applies immediately)
 
     Options:
     --help, -h           Display this help message
@@ -42,6 +44,9 @@ rds() {
         ;;
     instance)
         rds_instance "$@"
+        ;;
+    set-master-pass)
+        rds_set_master_pass "$@"
         ;;
     *)
         echo "Unknown command: $command"
@@ -117,6 +122,54 @@ rds_get() {
         echo "Error: Cluster not found: $cluster_id" >&2
         return 1
     }
+}
+
+rds_set_master_pass() {
+    local help_text="Usage: rds set-master-pass CLUSTER_ID NEW_PASSWORD [options]
+
+    Arguments:
+    CLUSTER_ID          The DB cluster identifier or ARN
+    NEW_PASSWORD        The new master user password to set
+
+    Options:
+    --help, -h          Display this help message
+
+    Behavior:
+    Applies the password change immediately to the specified DB cluster.
+
+    Output:
+    Prints a confirmation message on success. Returns 0 on success, non-zero on error. No JSON output.
+
+    Example:
+    rds set-master-pass my-aurora-cluster 'NewStrongPass123!'
+    "
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo "Error: CLUSTER_ID and NEW_PASSWORD are required"
+        echo "$help_text"
+        return 1
+    fi
+
+    local cluster_id="$1"
+    local new_password="$2"
+
+    local modify_output
+    if ! modify_output=$(aws rds modify-db-cluster \
+        --db-cluster-identifier "$cluster_id" \
+        --master-user-password "$new_password" \
+        --apply-immediately \
+        --output json); then
+        echo "Error: Failed to update master user password for cluster '$cluster_id'" >&2
+        return 1
+    fi
+
+    echo "Updated master user password for cluster '$cluster_id'."
+    return 0
 }
 
 rds_instance() {
