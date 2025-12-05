@@ -9,6 +9,8 @@ rds() {
     instance INSTANCE_ID Describe a specific DB instance
     set-master-pass CLUSTER_ID NEW_PASSWORD
                          Set the master user password for a DB cluster (applies immediately)
+    rm CLUSTER_ID [-f|--force]
+                         Delete an RDS DB cluster. With --force, disables deletion protection first.
 
     Options:
     --help, -h           Display this help message
@@ -47,6 +49,9 @@ rds() {
         ;;
     set-master-pass)
         rds_set_master_pass "$@"
+        ;;
+    rm)
+        rds_rm "$@"
         ;;
     *)
         echo "Unknown command: $command"
@@ -169,6 +174,102 @@ rds_set_master_pass() {
     fi
 
     echo "Updated master user password for cluster '$cluster_id'."
+    return 0
+}
+
+rds_rm() {
+    local help_text="Usage: rds rm CLUSTER_ID [options]
+
+    Arguments:
+    CLUSTER_ID          The DB cluster identifier or ARN
+
+    Options:
+    --help, -h          Display this help message
+    --force, -f         Disable deletion protection before deleting
+
+    Behavior:
+    Deletes the specified DB cluster. If --force is provided and deletion protection is enabled,
+    it is disabled first (applies immediately). The final snapshot is skipped.
+
+    Output:
+    Prints a confirmation message on success. Returns 0 on success, non-zero on error.
+    "
+
+    # Help handling
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    # Argument parsing: require cluster_id first
+    if [ -z "$1" ]; then
+        echo "Error: CLUSTER_ID is required"
+        echo "$help_text"
+        return 1
+    fi
+
+    local cluster_id="$1"
+    shift
+
+    local force="false"
+    if [ -n "$1" ]; then
+        case "$1" in
+            -f|--force)
+                force="true"
+                shift
+                ;;
+            -h|--help)
+                echo "$help_text"
+                return 0
+                ;;
+            *)
+                echo "Unknown argument: $1"
+                echo "$help_text"
+                return 1
+                ;;
+        esac
+    fi
+
+    # Describe cluster to check existence and deletion protection
+    local describe_output cluster_json deletion_protection
+    if ! describe_output=$(aws rds describe-db-clusters --db-cluster-identifier "$cluster_id" --output json); then
+        return 1
+    fi
+
+    if ! cluster_json=$(echo "$describe_output" | jq -e '.DBClusters | if length > 0 then .[0] else empty end'); then
+        echo "Error: Cluster not found: $cluster_id" >&2
+        return 1
+    fi
+
+    deletion_protection=$(echo "$cluster_json" | jq -r '.DeletionProtection // false')
+
+    if [ "$deletion_protection" = "true" ] && [ "$force" != "true" ]; then
+        echo "Error: Deletion protection is enabled for '$cluster_id'. Re-run with --force to disable and delete." >&2
+        return 1
+    fi
+
+    # Disable deletion protection if requested
+    if [ "$deletion_protection" = "true" ] && [ "$force" = "true" ]; then
+        if ! aws rds modify-db-cluster \
+            --db-cluster-identifier "$cluster_id" \
+            --deletion-protection false \
+            --apply-immediately \
+            --output json >/dev/null; then
+            echo "Error: Failed to disable deletion protection for cluster '$cluster_id'" >&2
+            return 1
+        fi
+    fi
+
+    # Delete the cluster (skip final snapshot)
+    if ! aws rds delete-db-cluster \
+        --db-cluster-identifier "$cluster_id" \
+        --skip-final-snapshot \
+        --output json >/dev/null; then
+        echo "Error: Failed to delete cluster '$cluster_id'" >&2
+        return 1
+    fi
+
+    echo "Deleted DB cluster '$cluster_id'."
     return 0
 }
 
