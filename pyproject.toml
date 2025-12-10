@@ -61,6 +61,7 @@ vpc = { reference = "tools/vpc", type = "file" }
 sqs = { reference = "tools/sqs", type = "file" }
 sns = { reference = "tools/sns", type = "file" }
 rds = { reference = "tools/rds", type = "file" }
+ecs = { reference = "tools/ecs", type = "file" }
 code-pipeline = { reference = "tools/code-pipeline", type = "file" }
 cpl = { reference = "tools/cpl", type = "file" }
 code-pipeline-executions = { reference = "tools/code-pipeline-executions", type = "file" }
