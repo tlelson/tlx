@@ -61,6 +61,90 @@ rds() {
     esac
 }
 
+rds__print_progress_bar() {
+    # Args: current total start_epoch message
+    local current=$1
+    local total=$2
+    local start=$3
+    local msg=$4
+    local width=30
+    local percent=0
+    if [ "$total" -gt 0 ]; then
+        percent=$(( 100 * current / total ))
+    fi
+    local filled=$(( width * percent / 100 ))
+    local empty=$(( width - filled ))
+    local elapsed=$(( $(date +%s) - start ))
+    local mins=$(( elapsed / 60 ))
+    local secs=$(( elapsed % 60 ))
+    printf "\r[%.*s%*s] %3d%% (%d/%d) %s | %02dm%02ds" \
+        "$filled" "############################################" \
+        "$empty" "" \
+        "$percent" "$current" "$total" "$msg" "$mins" "$secs"
+}
+
+rds__wait_instances_deleted() {
+    # Args: instance_ids...
+    local ids=("$@")
+    local total=${#ids[@]}
+    local start_epoch=$(date +%s)
+
+    # Track which ids are done
+    local done_map
+    declare -A done_map
+    local remaining=$total
+
+    # Initial line
+    echo "Waiting for DB instances to be deleted..." >&2
+
+    while [ $remaining -gt 0 ]; do
+        local deleted=0
+        local status_summary=""
+
+        for id in "${ids[@]}"; do
+            if [ -n "${done_map[$id]}" ]; then
+                deleted=$((deleted + 1))
+                continue
+            fi
+
+            # Query instance status; if not found, mark as deleted
+            local status
+            status=$(aws rds describe-db-instances \
+                --db-instance-identifier "$id" \
+                --query 'DBInstances[0].DBInstanceStatus' \
+                --output text 2>/dev/null) || status="NotFound"
+
+            if [ "$status" = "None" ] || [ "$status" = "NoneType" ] || [ "$status" = "" ] || [ "$status" = "NotFound" ]; then
+                done_map[$id]=1
+                deleted=$((deleted + 1))
+                continue
+            fi
+
+            # Build a short status summary (limited to 3 entries)
+            if [ -z "$status_summary" ]; then
+                status_summary="$id=$status"
+            else
+                # Limit the number of status entries shown to keep the line short
+                local shown_count=$(( $(echo "$status_summary" | awk -F, '{print NF}') ))
+                if [ $shown_count -lt 3 ]; then
+                    status_summary+=" , $id=$status"
+                fi
+            fi
+        done
+
+        rds__print_progress_bar "$deleted" "$total" "$start_epoch" "$status_summary" >&2
+
+        if [ $deleted -ge $total ]; then
+            break
+        fi
+
+        sleep 5
+    done
+
+    # Finish line
+    echo >&2
+}
+
 rds_list() {
     local help_text="Usage: rds list [options]
 
@@ -185,11 +269,13 @@ rds_rm() {
 
     Options:
     --help, -h          Display this help message
-    --force, -f         Disable deletion protection before deleting
+    --force, -f         Disable deletion protection and delete cluster instances before deleting
 
     Behavior:
     Deletes the specified DB cluster. If --force is provided and deletion protection is enabled,
-    it is disabled first (applies immediately). The final snapshot is skipped.
+    it is disabled first (applies immediately). Also deletes all DB instances in the cluster
+    before deleting the cluster, showing a progress bar while waiting for instance deletions.
+    The final snapshot is skipped.
 
     Output:
     Prints a confirmation message on success. Returns 0 on success, non-zero on error.
@@ -250,13 +336,33 @@ rds_rm() {
 
     # Disable deletion protection if requested
     if [ "$deletion_protection" = "true" ] && [ "$force" = "true" ]; then
+        # AWS CLI boolean flags use --flag to enable and --no-flag to disable.
+        # Passing "--deletion-protection false" causes: "Unknown options: false".
         if ! aws rds modify-db-cluster \
             --db-cluster-identifier "$cluster_id" \
-            --deletion-protection false \
+            --no-deletion-protection \
             --apply-immediately \
             --output json >/dev/null; then
             echo "Error: Failed to disable deletion protection for cluster '$cluster_id'" >&2
             return 1
+        fi
+    fi
+
+    # If forcing, delete all DB instances in the cluster first
+    if [ "$force" = "true" ]; then
+        # Extract instance identifiers from the cluster description
+        mapfile -t instance_ids < <(echo "$cluster_json" | jq -r '.DBClusterMembers[]?.DBInstanceIdentifier // empty')
+        if [ ${#instance_ids[@]} -gt 0 ]; then
+            echo "Deleting ${#instance_ids[@]} DB instance(s) in cluster '$cluster_id'..." >&2
+            for instance_id in "${instance_ids[@]}"; do
+                # Initiate deletion; if it's already deleting or gone, ignore errors and proceed to wait
+                if ! aws rds delete-db-instance --db-instance-identifier "$instance_id" >/dev/null 2>&1; then
+                    echo "Warning: Failed to initiate delete for instance '$instance_id'. It may already be deleting." >&2
+                fi
+            done
+
+            # Wait with a progress bar until all instances are deleted
+            rds__wait_instances_deleted "${instance_ids[@]}"
         fi
     fi
 
