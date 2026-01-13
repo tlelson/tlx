@@ -378,6 +378,8 @@ iam_role() {
 iam_policy() {
     local help_text="Usage: iam policy [policyArn]
 
+    iam policy update <policy_arn> <update_json_path>
+
     Without a policy ARN, a list of IAM policies is returned. If an ARN is provided, the policy document of the latest version is returned.
 
     Arguments:
@@ -385,6 +387,13 @@ iam_policy() {
 
     Options:
     --help        Display this help message"
+
+    # Subcommands take precedence so their --help is respected
+    if [ "$1" = "update" ]; then
+        shift
+        iam_policy_update "$@"
+        return $?
+    fi
 
     if [[ "$*" == *"--help"* ]]; then
         echo "$help_text"
@@ -398,6 +407,65 @@ iam_policy() {
         versionId=$(aws --output json iam get-policy --policy-arn "$arn" --query 'Policy.DefaultVersionId' | jq -r)
         aws --output json iam get-policy-version --policy-arn "$arn" --version-id "$versionId" --query 'PolicyVersion.Document' | jq
     fi
+}
+
+iam_policy_update() {
+    local help_text="Usage: iam policy update <policy_arn> <update_json_path>
+
+    Create a new managed policy version from the provided policy document, and set it as default.
+
+    Arguments:
+    policy_arn    ARN of the IAM managed policy
+    json_path     Path to JSON policy document
+
+    Options:
+    --help        Display this help message
+
+    Output:
+    Confirmation message on success or AWS CLI error output.
+
+    Examples:
+    iam policy update arn:aws:iam::123456789012:policy/MyPolicy ./policy.json
+
+    Notes:
+    - The JSON must be a valid IAM policy document (not URL-encoded).
+    - This command uses create-policy-version with --set-as-default.
+    - IAM allows at most 5 versions per managed policy. Delete old versions if needed."
+
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [ "$#" -ne 2 ]; then
+        echo "$help_text"
+        return 1
+    fi
+
+    local policy_arn="$1"
+    local json_path="$2"
+
+    if [ ! -f "$json_path" ]; then
+        echo "File not found: $json_path" >&2
+        return 1
+    fi
+
+    # Validate JSON
+    if ! jq empty "$json_path" >/dev/null 2>&1; then
+        echo "Invalid JSON: $json_path" >&2
+        return 1
+    fi
+
+    aws iam create-policy-version \
+        --policy-arn "$policy_arn" \
+        --policy-document "file://$json_path" \
+        --set-as-default
+
+    local status=$?
+    if [ $status -eq 0 ]; then
+        echo "Created new default policy version for '$policy_arn' from '$json_path'"
+    fi
+    return $status
 }
 
 # Dispatcher function
