@@ -227,6 +227,26 @@ _sqs_purge() {
     aws sqs purge-queue --queue-url "$queue_url"
 }
 
+_sqs_delete() {
+    local help_text="Usage: sqs delete <queue-name-or-arn>\nDeletes the specified SQS queue. This action cannot be undone.\n\nExamples:\n  sqs delete MyQueueName\n"
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+    if [[ -z "$1" ]]; then
+        echo "Error: queue name or ARN is required for delete" >&2
+        echo "$help_text" >&2
+        return 1
+    fi
+    local queue_name_or_arn="$1"
+    local queue_url
+    if ! queue_url=$(_sqs_get_queue_url "$queue_name_or_arn"); then
+        echo "Error: Failed to resolve queue URL for '$queue_name_or_arn'" >&2
+        return 1
+    fi
+    aws sqs delete-queue --queue-url "$queue_url"
+}
+
 sqs() {
     local command_or_queue_name="$1"
     # Shift only if command_or_queue_name is not empty, to preserve $@ for _sqs_list_queues if no arg is given
@@ -241,6 +261,9 @@ sqs() {
     purge)
         _sqs_purge "$@"
         ;;
+    delete)
+        _sqs_delete "$@"
+        ;;
     --help | -h)
         echo "Usage: sqs [queue_name | command] [options]"
         echo ""
@@ -250,6 +273,7 @@ sqs() {
         echo "Commands:"
         echo "  read           Read messages from an SQS queue (see 'sqs read --help')"
         echo "  purge          Purge all messages from an SQS queue (see 'sqs purge --help')"
+        echo "  delete         Delete an SQS queue (see 'sqs delete --help')"
         echo ""
         echo "Examples:"
         echo "  sqs              # Lists all queues"
