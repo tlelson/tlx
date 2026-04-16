@@ -2,25 +2,311 @@
 
 # ECS/ECR helper CLI modeled after tools/rds
 
+ecs__mktemp_file() {
+    mktemp "${TMPDIR:-/tmp}/ecs.$1.XXXXXX"
+}
+
+ecs__list_cluster_arns() {
+    local response
+    if ! response=$(aws --output json ecs list-clusters); then
+        return 1
+    fi
+
+    echo "$response" | jq -r '.clusterArns[]?'
+}
+
+ecs__list_service_arns() {
+    local cluster="$1"
+    local response
+    if ! response=$(aws --output json ecs list-services --cluster "$cluster"); then
+        return 1
+    fi
+
+    echo "$response" | jq -r '.serviceArns[]?'
+}
+
+ecs__list_task_arns() {
+    local cluster="$1"
+    local service="$2"
+    local response
+    local aws_args=(--output json ecs list-tasks --cluster "$cluster" --desired-status RUNNING)
+
+    if [ -n "$service" ]; then
+        aws_args+=(--service-name "$service")
+    fi
+
+    if ! response=$(aws "${aws_args[@]}"); then
+        return 1
+    fi
+
+    echo "$response" | jq -r '.taskArns[]?'
+}
+
+ecs__format_cluster_batch() {
+    jq -c '
+      .clusters[]? | {
+        ClusterName: .clusterName,
+        Status: .status,
+        RunningTasksCount: .runningTasksCount,
+        ActiveServicesCount: .activeServicesCount
+      }'
+}
+
+ecs__format_service_batch() {
+    local cluster="$1"
+
+    jq --arg cluster "$cluster" -c '
+      .services[]? | {
+        ClusterName: ($cluster | split("/")[-1]),
+        ServiceName: .serviceName,
+        Status: .status,
+        TaskCount: "\(.runningCount)/\(.desiredCount)"
+      }'
+}
+
+ecs__append_described_clusters_raw() {
+    local output_file="$1"
+    shift
+
+    local batch=()
+    local cluster_arn
+    local response
+
+    for cluster_arn in "$@"; do
+        batch+=("$cluster_arn")
+        if [ "${#batch[@]}" -eq 100 ]; then
+            if ! response=$(aws --output json ecs describe-clusters --clusters "${batch[@]}"); then
+                return 1
+            fi
+            echo "$response" | jq -c '.clusters[]?' >>"$output_file" || return 1
+            batch=()
+        fi
+    done
+
+    if [ "${#batch[@]}" -gt 0 ]; then
+        if ! response=$(aws --output json ecs describe-clusters --clusters "${batch[@]}"); then
+            return 1
+        fi
+        echo "$response" | jq -c '.clusters[]?' >>"$output_file" || return 1
+    fi
+}
+
+ecs__append_described_clusters() {
+    local output_file="$1"
+    shift
+
+    local batch=()
+    local cluster_arn
+    local response
+
+    for cluster_arn in "$@"; do
+        batch+=("$cluster_arn")
+        if [ "${#batch[@]}" -eq 100 ]; then
+            if ! response=$(aws --output json ecs describe-clusters --clusters "${batch[@]}"); then
+                return 1
+            fi
+            echo "$response" | ecs__format_cluster_batch >>"$output_file" || return 1
+            batch=()
+        fi
+    done
+
+    if [ "${#batch[@]}" -gt 0 ]; then
+        if ! response=$(aws --output json ecs describe-clusters --clusters "${batch[@]}"); then
+            return 1
+        fi
+        echo "$response" | ecs__format_cluster_batch >>"$output_file" || return 1
+    fi
+}
+
+ecs__append_described_services() {
+    local cluster="$1"
+    local output_file="$2"
+    shift 2
+
+    local batch=()
+    local service_ref
+    local response
+
+    for service_ref in "$@"; do
+        batch+=("$service_ref")
+        if [ "${#batch[@]}" -eq 10 ]; then
+            if ! response=$(aws --output json ecs describe-services --cluster "$cluster" --services "${batch[@]}"); then
+                return 1
+            fi
+            echo "$response" | ecs__format_service_batch "$cluster" >>"$output_file" || return 1
+            batch=()
+        fi
+    done
+
+    if [ "${#batch[@]}" -gt 0 ]; then
+        if ! response=$(aws --output json ecs describe-services --cluster "$cluster" --services "${batch[@]}"); then
+            return 1
+        fi
+        echo "$response" | ecs__format_service_batch "$cluster" >>"$output_file" || return 1
+    fi
+}
+
+ecs__append_described_services_raw() {
+    local cluster="$1"
+    local output_file="$2"
+    shift 2
+
+    local batch=()
+    local service_ref
+    local response
+
+    for service_ref in "$@"; do
+        batch+=("$service_ref")
+        if [ "${#batch[@]}" -eq 10 ]; then
+            if ! response=$(aws --output json ecs describe-services --cluster "$cluster" --services "${batch[@]}"); then
+                return 1
+            fi
+            echo "$response" | jq -c '.services[]?' >>"$output_file" || return 1
+            batch=()
+        fi
+    done
+
+    if [ "${#batch[@]}" -gt 0 ]; then
+        if ! response=$(aws --output json ecs describe-services --cluster "$cluster" --services "${batch[@]}"); then
+            return 1
+        fi
+        echo "$response" | jq -c '.services[]?' >>"$output_file" || return 1
+    fi
+}
+
+ecs__append_described_tasks() {
+    local cluster="$1"
+    local output_file="$2"
+    shift 2
+
+    local batch=()
+    local task_arn
+    local response
+
+    for task_arn in "$@"; do
+        batch+=("$task_arn")
+        if [ "${#batch[@]}" -eq 100 ]; then
+            if ! response=$(aws --output json ecs describe-tasks --cluster "$cluster" --tasks "${batch[@]}"); then
+                return 1
+            fi
+            echo "$response" | jq -c '.tasks[]?' >>"$output_file" || return 1
+            batch=()
+        fi
+    done
+
+    if [ "${#batch[@]}" -gt 0 ]; then
+        if ! response=$(aws --output json ecs describe-tasks --cluster "$cluster" --tasks "${batch[@]}"); then
+            return 1
+        fi
+        echo "$response" | jq -c '.tasks[]?' >>"$output_file" || return 1
+    fi
+}
+
+ecs__build_eni_map_file() {
+    local tasks_file="$1"
+    local output_file="$2"
+    local eni_lines
+    local eni_ids=()
+    local eni_id
+    local batch=()
+    local response
+
+    : >"$output_file"
+
+    eni_lines=$(jq -r '
+      [
+        .attachments[]?
+        | select(.type == "ElasticNetworkInterface")
+        | .details[]?
+        | select(.name == "networkInterfaceId")
+        | .value
+      ] | .[]?
+    ' "$tasks_file" | sort -u)
+
+    while IFS= read -r eni_id; do
+        if [ -n "$eni_id" ]; then
+            eni_ids+=("$eni_id")
+        fi
+    done <<<"$eni_lines"
+
+    if [ "${#eni_ids[@]}" -eq 0 ]; then
+        printf '{}\n' >"$output_file"
+        return 0
+    fi
+
+    for eni_id in "${eni_ids[@]}"; do
+        batch+=("$eni_id")
+        if [ "${#batch[@]}" -eq 100 ]; then
+            if ! response=$(aws --output json ec2 describe-network-interfaces --network-interface-ids "${batch[@]}"); then
+                return 1
+            fi
+            echo "$response" | jq -c '
+              .NetworkInterfaces[]? | {
+                key: .NetworkInterfaceId,
+                value: {
+                  NetworkInterfaceId: .NetworkInterfaceId,
+                  SubnetId: (.SubnetId // null),
+                  SecurityGroups: ((.Groups // []) | map(.GroupId)),
+                  PrivateIpAddress: (.PrivateIpAddress // null),
+                  PrivateIpAddresses: ((.PrivateIpAddresses // []) | map(.PrivateIpAddress)),
+                  PublicIpAddress: (.Association.PublicIp // null),
+                  PublicIpAddresses: ([.Association.PublicIp] | map(select(. != null and . != ""))),
+                  IPv6Addresses: ((.Ipv6Addresses // []) | map(.Ipv6Address))
+                }
+              }
+            ' >>"$output_file" || return 1
+            batch=()
+        fi
+    done
+
+    if [ "${#batch[@]}" -gt 0 ]; then
+        if ! response=$(aws --output json ec2 describe-network-interfaces --network-interface-ids "${batch[@]}"); then
+            return 1
+        fi
+        echo "$response" | jq -c '
+          .NetworkInterfaces[]? | {
+            key: .NetworkInterfaceId,
+            value: {
+              NetworkInterfaceId: .NetworkInterfaceId,
+              SubnetId: (.SubnetId // null),
+              SecurityGroups: ((.Groups // []) | map(.GroupId)),
+              PrivateIpAddress: (.PrivateIpAddress // null),
+              PrivateIpAddresses: ((.PrivateIpAddresses // []) | map(.PrivateIpAddress)),
+              PublicIpAddress: (.Association.PublicIp // null),
+              PublicIpAddresses: ([.Association.PublicIp] | map(select(. != null and . != ""))),
+              IPv6Addresses: ((.Ipv6Addresses // []) | map(.Ipv6Address))
+            }
+          }
+        ' >>"$output_file" || return 1
+    fi
+
+    jq -s 'from_entries' "$output_file" >"${output_file}.tmp" && mv "${output_file}.tmp" "$output_file"
+}
+
 ecs() {
     local help_text="Usage: ${FUNCNAME[0]} [COMMAND] [ARGS] [options]
 
     Commands:
-    clusters                    List ECS cluster ARNs
+    clusters                    List ECS clusters as JSON
     task-def [TD]               Describe a task definition or list active task definitions
-    service [CLUSTER SERVICE]   Describe a service or list all services across clusters
-    tasks CLUSTER SERVICE       List running task IDs for a service
+    service [CLUSTER [SERVICE]] Describe one service, all services in a cluster, or all services
+    tasks CLUSTER [SERVICE]     List running tasks in a cluster or for one service
     shell CLUSTER SERVICE       Open an interactive /bin/bash shell in a running task
     ecr [REPOSITORY]            List repositories or describe one
-    ecr-images REPOSITORY [N]   List up to N latest images (default 10) as jsonlines
+    ecr-images REPOSITORY [N]   List up to N latest images (default 10) as JSON
 
     Options:
     --help, -h                  Display this help message
 
     Examples:
-    ecs clusters
+    ecs clusters | jtbl
     ecs task-def my-family:42
+    ecs service my-cluster | jtbl
+    ecs service my-cluster --full | jq '.[0]'
     ecs service my-cluster my-service
+    ecs service my-cluster my-service --full
+    ecs tasks my-cluster | jtbl
+    ecs tasks my-cluster --full | jq '.[0]'
     ecs tasks my-cluster my-service
     ecs shell my-cluster my-service
     ecs ecr my-repo
@@ -70,26 +356,92 @@ ecs() {
     esac
 }
 
-# List cluster ARNs
+# List clusters
 ecs_clusters() {
     local help_text="Usage: ecs clusters [options]
 
     Options:
     --help, -h          Display this help message
+    --full              Return the full ECS describe-clusters objects
+
+    Output:
+    Default: ClusterName, Status, RunningTasksCount, ActiveServicesCount
+    With --full: the full ECS describe-clusters objects
     "
 
-    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
-        echo "$help_text"
-        return 0
-    fi
+    local full_output=0
+    local args=()
 
-    if [ -n "$1" ]; then
-        echo "Unknown argument: $1"
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+        --help | -h)
+            echo "$help_text"
+            return 0
+            ;;
+        --full)
+            full_output=1
+            ;;
+        --)
+            shift
+            while [ "$#" -gt 0 ]; do
+                args+=("$1")
+                shift
+            done
+            break
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            echo "$help_text"
+            return 1
+            ;;
+        *)
+            args+=("$1")
+            ;;
+        esac
+        shift
+    done
+
+    if [ "${#args[@]}" -ne 0 ]; then
+        echo "Unknown argument: ${args[0]}"
         echo "$help_text"
         return 1
     fi
 
-    aws --output json ecs list-clusters | jq -r '.clusterArns[]'
+    local cluster_arns=()
+    local cluster_arn
+    local cluster_lines
+    local output_file
+    local status
+
+    if ! cluster_lines=$(ecs__list_cluster_arns); then
+        return 1
+    fi
+
+    while IFS= read -r cluster_arn; do
+        if [ -n "$cluster_arn" ]; then
+            cluster_arns+=("$cluster_arn")
+        fi
+    done <<<"$cluster_lines"
+
+    output_file=$(ecs__mktemp_file clusters) || return 1
+    : >"$output_file"
+
+    if [ "${#cluster_arns[@]}" -gt 0 ]; then
+        if [ "$full_output" -eq 1 ]; then
+            if ! ecs__append_described_clusters_raw "$output_file" "${cluster_arns[@]}"; then
+                rm -f "$output_file"
+                return 1
+            fi
+        elif ! ecs__append_described_clusters "$output_file" "${cluster_arns[@]}"; then
+            rm -f "$output_file"
+            return 1
+        fi
+    fi
+
+    jq -s '.' "$output_file"
+    status=$?
+    rm -f "$output_file"
+    return $status
 }
 
 # Describe a task definition or list task defs
@@ -103,7 +455,7 @@ ecs_task_def() {
     --help, -h           Display this help message
 
     Behavior:
-    If no task definition is provided a list of active task definitions is returned.
+    If no task definition is provided an array of active task definitions is returned.
     "
 
     if [[ "$1" == "--help" || "$1" == "-h" ]]; then
@@ -111,74 +463,357 @@ ecs_task_def() {
         return 0
     fi
 
+    if [ "$#" -gt 1 ]; then
+        echo "Error: Too many arguments"
+        echo "$help_text"
+        return 1
+    fi
+
     if [ -n "$1" ]; then
-        aws ecs describe-task-definition --task-definition "$1"
+        aws --output json ecs describe-task-definition --task-definition "$1" | jq '.taskDefinition'
     else
-        aws --output json ecs list-task-definitions | jq -r '.taskDefinitionArns[] | sub("^[^/]+/"; "")'
+        aws --output json ecs list-task-definitions --status ACTIVE --sort DESC | jq '
+          [
+            .taskDefinitionArns[]? as $arn
+            | ($arn | split("/")[-1]) as $task_def
+            | {
+                TaskDefinitionArn: $arn,
+                TaskDefinition: $task_def,
+                Family: ($task_def | split(":")[0]),
+                Revision: ($task_def | split(":")[-1])
+              }
+          ]'
     fi
 }
 
 # Describe a service or list services across clusters
 ecs_service() {
-    local help_text="Usage: ecs service [CLUSTER SERVICE] [options]
+    local help_text="Usage: ecs service [--full] [CLUSTER [SERVICE]] [options]
 
     Arguments:
-    CLUSTER             ECS cluster name/ARN
-    SERVICE             Service family name
+    CLUSTER             Optional. ECS cluster name/ARN
+    SERVICE             Optional. Service name/ARN
 
     Options:
     --help, -h          Display this help message
+    --full              Return the full ECS describe-services objects
 
     Behavior:
-    If no cluster and service are provided, outputs a table of CLUSTER SERVICE pairs.
-    "
-
-    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
-        echo "$help_text"
-        return 0
-    fi
-
-    if [ "$#" -ne 2 ]; then
-        {
-            echo "CLUSTER SERVICE"
-            aws --output json ecs list-clusters | jq -r '.clusterArns[]' | \
-                xargs -P4 -I {} aws --output json ecs list-services --cluster {} | \
-                jq -r '.serviceArns[] | sub("^[^/]+/"; "") | sub("/"; " ")'
-        } | column -t
-    else
-        aws ecs describe-services --cluster "$1" --service "$2"
-    fi
-}
-
-# List running task IDs for a service
-ecs_tasks() {
-    local help_text="Usage: ecs tasks CLUSTER SERVICE [options]
-
-    Arguments:
-    CLUSTER             ECS cluster name/ARN
-    SERVICE             Service family name
-
-    Options:
-    --help, -h          Display this help message
+    No args: return an array of all services across all clusters.
+    One arg: return an array of all services in the cluster.
+    Two args: return a single service object.
 
     Output:
-    One task ID per line for RUNNING tasks.
+    Default: ClusterName, ServiceName, Status, TaskCount
+    With --full: the full ECS describe-services objects
     "
 
-    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
-        echo "$help_text"
-        return 0
-    fi
+    local full_output=0
+    local args=()
 
-    if [ -z "$1" ] || [ -z "$2" ]; then
-        echo "Error: CLUSTER and SERVICE are required"
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+        --help | -h)
+            echo "$help_text"
+            return 0
+            ;;
+        --full)
+            full_output=1
+            ;;
+        --)
+            shift
+            while [ "$#" -gt 0 ]; do
+                args+=("$1")
+                shift
+            done
+            break
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            echo "$help_text"
+            return 1
+            ;;
+        *)
+            args+=("$1")
+            ;;
+        esac
+        shift
+    done
+
+    if [ "${#args[@]}" -gt 2 ]; then
+        echo "Error: Too many arguments"
         echo "$help_text"
         return 1
     fi
 
-    aws --output json ecs list-tasks --cluster "$1" \
-        --service-name "$2" \
-        --desired-status RUNNING | jq -r '.taskArns[] | sub(".*/"; "")'
+    local output_file
+    local status
+    output_file=$(ecs__mktemp_file services) || return 1
+    : >"$output_file"
+
+    if [ "${#args[@]}" -eq 2 ]; then
+        local response
+        local service_object
+        local cluster="${args[0]}"
+        local service="${args[1]}"
+
+        if ! response=$(aws --output json ecs describe-services --cluster "$cluster" --services "$service"); then
+            rm -f "$output_file"
+            return 1
+        fi
+
+        if [ "$full_output" -eq 1 ]; then
+            service_object=$(echo "$response" | jq '.services[0] // empty')
+        else
+            service_object=$(echo "$response" | ecs__format_service_batch "$cluster" | jq -s '.[0] // empty')
+        fi
+        status=$?
+        rm -f "$output_file"
+
+        if [ $status -ne 0 ]; then
+            return $status
+        fi
+
+        if [ -z "$service_object" ]; then
+            echo "Error: Service not found: $service" >&2
+            return 1
+        fi
+
+        echo "$service_object"
+        return 0
+    fi
+
+    if [ "${#args[@]}" -eq 1 ]; then
+        local service_arns=()
+        local service_arn
+        local service_lines
+        local cluster="${args[0]}"
+
+        if ! service_lines=$(ecs__list_service_arns "$cluster"); then
+            rm -f "$output_file"
+            return 1
+        fi
+
+        while IFS= read -r service_arn; do
+            if [ -n "$service_arn" ]; then
+                service_arns+=("$service_arn")
+            fi
+        done <<<"$service_lines"
+
+        if [ "${#service_arns[@]}" -gt 0 ]; then
+            if [ "$full_output" -eq 1 ]; then
+                if ! ecs__append_described_services_raw "$cluster" "$output_file" "${service_arns[@]}"; then
+                    rm -f "$output_file"
+                    return 1
+                fi
+            elif ! ecs__append_described_services "$cluster" "$output_file" "${service_arns[@]}"; then
+                rm -f "$output_file"
+                return 1
+            fi
+        fi
+
+        jq -s '.' "$output_file"
+        status=$?
+        rm -f "$output_file"
+        return $status
+    fi
+
+    local cluster_arns=()
+    local cluster_arn
+    local cluster_lines
+    local service_arns=()
+    local service_arn
+    local service_lines
+
+    if ! cluster_lines=$(ecs__list_cluster_arns); then
+        rm -f "$output_file"
+        return 1
+    fi
+
+    while IFS= read -r cluster_arn; do
+        if [ -n "$cluster_arn" ]; then
+            cluster_arns+=("$cluster_arn")
+        fi
+    done <<<"$cluster_lines"
+
+    for cluster_arn in "${cluster_arns[@]}"; do
+        service_arns=()
+        if ! service_lines=$(ecs__list_service_arns "$cluster_arn"); then
+            rm -f "$output_file"
+            return 1
+        fi
+
+        while IFS= read -r service_arn; do
+            if [ -n "$service_arn" ]; then
+                service_arns+=("$service_arn")
+            fi
+        done <<<"$service_lines"
+
+        if [ "${#service_arns[@]}" -eq 0 ]; then
+            continue
+        fi
+
+        if [ "$full_output" -eq 1 ]; then
+            if ! ecs__append_described_services_raw "$cluster_arn" "$output_file" "${service_arns[@]}"; then
+                rm -f "$output_file"
+                return 1
+            fi
+        elif ! ecs__append_described_services "$cluster_arn" "$output_file" "${service_arns[@]}"; then
+            rm -f "$output_file"
+            return 1
+        fi
+    done
+
+    jq -s '.' "$output_file"
+    status=$?
+    rm -f "$output_file"
+    return $status
+}
+
+# List running tasks for a cluster or service
+ecs_tasks() {
+    local help_text="Usage: ecs tasks [--full] CLUSTER [SERVICE] [options]
+
+    Arguments:
+    CLUSTER             ECS cluster name/ARN
+    SERVICE             Optional. Service name/ARN
+
+    Options:
+    --help, -h          Display this help message
+    --full              Return the full ECS describe-tasks objects
+
+    Output:
+    Default: a JSON array with ServiceName, TaskDefinitionFamily, HealthStatus,
+    SecurityGroups, SubnetId, PrivateIPv4Address, and PublicIPv4Address.
+    With --full: a JSON array of the full ECS describe-tasks objects.
+    "
+
+    local full_output=0
+    local args=()
+
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+        --help | -h)
+            echo "$help_text"
+            return 0
+            ;;
+        --full)
+            full_output=1
+            ;;
+        --)
+            shift
+            while [ "$#" -gt 0 ]; do
+                args+=("$1")
+                shift
+            done
+            break
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            echo "$help_text"
+            return 1
+            ;;
+        *)
+            args+=("$1")
+            ;;
+        esac
+        shift
+    done
+
+    if [ "${#args[@]}" -eq 0 ]; then
+        echo "Error: CLUSTER is required"
+        echo "$help_text"
+        return 1
+    fi
+
+    if [ "${#args[@]}" -gt 2 ]; then
+        echo "Error: Too many arguments"
+        echo "$help_text"
+        return 1
+    fi
+
+    local cluster="${args[0]}"
+    local service="${args[1]:-}"
+    local task_arns=()
+    local task_arn
+    local task_lines
+    local tasks_file
+    local eni_map_file
+    local status
+
+    if ! task_lines=$(ecs__list_task_arns "$cluster" "$service"); then
+        return 1
+    fi
+
+    while IFS= read -r task_arn; do
+        if [ -n "$task_arn" ]; then
+            task_arns+=("$task_arn")
+        fi
+    done <<<"$task_lines"
+
+    tasks_file=$(ecs__mktemp_file tasks) || return 1
+    : >"$tasks_file"
+
+    if [ "${#task_arns[@]}" -gt 0 ]; then
+        if ! ecs__append_described_tasks "$cluster" "$tasks_file" "${task_arns[@]}"; then
+            rm -f "$tasks_file" "$eni_map_file"
+            return 1
+        fi
+    fi
+
+    if [ "$full_output" -eq 1 ]; then
+        jq -s '.' "$tasks_file"
+        status=$?
+        rm -f "$tasks_file"
+        return $status
+    fi
+
+    eni_map_file=$(ecs__mktemp_file eni-map) || {
+        rm -f "$tasks_file"
+        return 1
+    }
+
+    if ! ecs__build_eni_map_file "$tasks_file" "$eni_map_file"; then
+        rm -f "$tasks_file" "$eni_map_file" "${eni_map_file}.tmp"
+        return 1
+    fi
+
+    jq -s --slurpfile eni_map "$eni_map_file" '
+      def compact_unique: map(select(. != null and . != "")) | unique;
+
+      ($eni_map[0] // {}) as $eni_lookup
+      | map(
+          ((.attachments // [])
+            | map(
+                select(.type == "ElasticNetworkInterface")
+                | ((.details // []) | map({key: .name, value: .value}) | from_entries)
+              )
+          ) as $task_enis
+          | (($task_enis | map(select(.networkInterfaceId != null)) | map(.networkInterfaceId))
+              | map($eni_lookup[.] // {})) as $eni_infos
+          | ((($eni_infos | map(.PrivateIpAddresses // []) | flatten)
+              + ($task_enis | map(.privateIPv4Address))
+              + ((.containers // []) | map((.networkInterfaces // []) | map(.privateIpv4Address)) | flatten))
+              | compact_unique) as $private_ips
+          | ((($eni_infos | map(.PublicIpAddresses // []) | flatten))
+              | compact_unique) as $public_ips
+          | {
+              ServiceName: (if (.group // "" | startswith("service:")) then (.group | sub("^service:"; "")) else null end),
+              TaskDefinitionFamily: ((.taskDefinitionArn // "")
+                | split("/")[-1]
+                | select(. != "")) // null,
+              HealthStatus: (.healthStatus // null),
+              SubnetId: ((($task_enis | map(.subnetId) | compact_unique)[0]) // (($eni_infos | map(.SubnetId) | compact_unique)[0]) // null),
+              SecurityGroups: (($eni_infos | map(.SecurityGroups // []) | flatten) | compact_unique),
+              PrivateIPv4Address: ($private_ips[0] // null),
+              PublicIPv4Address: ($public_ips[0] // null)
+            }
+        )
+    ' "$tasks_file"
+    status=$?
+
+    rm -f "$tasks_file" "$eni_map_file" "${eni_map_file}.tmp"
+    return $status
 }
 
 # Open interactive shell in a running task
@@ -211,7 +846,7 @@ ecs_shell() {
     local service="$2"
 
     local taskID
-    if ! taskID=$(ecs_tasks "$cluster" "$service" | head -n1); then
+    if ! taskID=$(ecs_tasks --full "$cluster" "$service" | jq -r '.[0].taskArn // empty | split("/")[-1]'); then
         echo "Error: Unable to determine running task for $cluster $service" >&2
         return 1
     fi
@@ -244,14 +879,30 @@ ecs_ecr() {
         return 0
     fi
 
+    if [ "$#" -gt 1 ]; then
+        echo "Error: Too many arguments"
+        echo "$help_text"
+        return 1
+    fi
+
     if [ -n "$1" ]; then
-        aws --output json ecr describe-repositories | jq --arg rn "$1" '.repositories[] | select(.repositoryName==$rn)'
+        aws --output json ecr describe-repositories --repository-names "$1" | jq '.repositories[0]'
     else
-        aws --output json ecr describe-repositories | jq -r '.repositories[].repositoryName'
+        aws --output json ecr describe-repositories | jq '
+          [
+            .repositories[]? | {
+              RepositoryName: .repositoryName,
+              RepositoryArn: .repositoryArn,
+              RepositoryUri: .repositoryUri,
+              ImageTagMutability: .imageTagMutability,
+              ScanOnPush: (.imageScanningConfiguration.scanOnPush // false),
+              EncryptionType: (.encryptionConfiguration.encryptionType // null)
+            }
+          ]'
     fi
 }
 
-# List images for a repository as jsonlines
+# List images for a repository as JSON
 ecs_ecr_images() {
     local help_text="Usage: ecs ecr-images REPOSITORY [COUNT] [options]
 
@@ -279,16 +930,30 @@ ecs_ecr_images() {
         return 1
     fi
 
+    if [ "$#" -gt 2 ]; then
+        echo "Error: Too many arguments"
+        echo "$help_text"
+        return 1
+    fi
+
     local repo="$1"
     local max_items="${2:-10}"
 
-    aws --output json ecr describe-images --repository-name "$repo" --max-items "$max_items" | jq -c '
-      .imageDetails | sort_by(.imagePushedAt) | reverse | .[] | {
-        Tags: (if (.imageTags | length) == 0 then null else (.imageTags | join(",")) end),
-        PushedAt: .imagePushedAt | sub(":[0-9]{2}\\.[0-9]{6}"; ""),
-        LastPulledAt: .lastRecordedPullTime | sub(":[0-9]{2}\\.[0-9]{6}"; ""),
-        Digest: .imageDigest
-      }'
+    aws --output json ecr describe-images --repository-name "$repo" --max-items "$max_items" | jq --arg repo "$repo" '
+      [
+        .imageDetails
+        | sort_by(.imagePushedAt)
+        | reverse
+        | .[]
+        | {
+            RepositoryName: $repo,
+            ImageDigest: .imageDigest,
+            ImageTags: (.imageTags // []),
+            PushedAt: (.imagePushedAt // null),
+            LastPulledAt: (.lastRecordedPullTime // null),
+            ImageSizeInBytes: (.imageSizeInBytes // null)
+          }
+      ]'
 }
 
 # Entrypoint
