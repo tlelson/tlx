@@ -379,6 +379,7 @@ iam_policy() {
     local help_text="Usage: iam policy [policyArn]
 
     iam policy update <policy_arn> <update_json_path>
+    iam policy rm <policy_arn>
 
     Without a policy ARN, a list of IAM policies is returned. If an ARN is provided, the policy document of the latest version is returned.
 
@@ -395,6 +396,12 @@ iam_policy() {
         return $?
     fi
 
+    if [ "$1" = "rm" ]; then
+        shift
+        iam_policy_rm "$@"
+        return $?
+    fi
+
     if [[ "$*" == *"--help"* ]]; then
         echo "$help_text"
         return 0
@@ -407,6 +414,44 @@ iam_policy() {
         versionId=$(aws --output json iam get-policy --policy-arn "$arn" --query 'Policy.DefaultVersionId' | jq -r)
         aws --output json iam get-policy-version --policy-arn "$arn" --version-id "$versionId" --query 'PolicyVersion.Document' | jq
     fi
+}
+
+iam_policy_rm() {
+    local help_text="Usage: iam policy rm <policy_arn>
+
+    Delete the specified IAM managed policy by ARN.
+
+    Arguments:
+    policy_arn    ARN of the IAM managed policy
+
+    Options:
+    --help        Display this help message
+
+    Output:
+    Confirmation message on success or AWS CLI error output.
+
+    Example:
+    iam policy rm arn:aws:iam::123456789012:policy/MyPolicy"
+
+    if [[ "$*" == *"--help"* ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [ "$#" -ne 1 ]; then
+        echo "$help_text"
+        return 1
+    fi
+
+    local policy_arn="$1"
+
+    aws iam delete-policy --policy-arn "$policy_arn"
+
+    local status=$?
+    if [ $status -eq 0 ]; then
+        echo "Deleted policy '$policy_arn'"
+    fi
+    return $status
 }
 
 iam_policy_update() {
