@@ -6,3 +6,6 @@ set -ev
 get-aws-creds --help
 dynamo-batch-write --help
 dynamo-clear-table --help
+lambda --help
+lambda describe --help
+lambda delete --help
