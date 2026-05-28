@@ -120,8 +120,7 @@ ecs__append_described_clusters() {
 
 ecs__append_described_services() {
     local cluster="$1"
-    local output_file="$2"
-    shift 2
+    shift
 
     local batch=()
     local service_ref
@@ -133,7 +132,7 @@ ecs__append_described_services() {
             if ! response=$(aws --output json ecs describe-services --cluster "$cluster" --services "${batch[@]}"); then
                 return 1
             fi
-            echo "$response" | ecs__format_service_batch "$cluster" >>"$output_file" || return 1
+            echo "$response" | ecs__format_service_batch "$cluster" || return 1
             batch=()
         fi
     done
@@ -142,14 +141,13 @@ ecs__append_described_services() {
         if ! response=$(aws --output json ecs describe-services --cluster "$cluster" --services "${batch[@]}"); then
             return 1
         fi
-        echo "$response" | ecs__format_service_batch "$cluster" >>"$output_file" || return 1
+        echo "$response" | ecs__format_service_batch "$cluster" || return 1
     fi
 }
 
 ecs__append_described_services_raw() {
     local cluster="$1"
-    local output_file="$2"
-    shift 2
+    shift
 
     local batch=()
     local service_ref
@@ -161,7 +159,7 @@ ecs__append_described_services_raw() {
             if ! response=$(aws --output json ecs describe-services --cluster "$cluster" --services "${batch[@]}"); then
                 return 1
             fi
-            echo "$response" | jq -c '.services[]?' >>"$output_file" || return 1
+            echo "$response" | jq -c '.services[]?' || return 1
             batch=()
         fi
     done
@@ -170,7 +168,7 @@ ecs__append_described_services_raw() {
         if ! response=$(aws --output json ecs describe-services --cluster "$cluster" --services "${batch[@]}"); then
             return 1
         fi
-        echo "$response" | jq -c '.services[]?' >>"$output_file" || return 1
+        echo "$response" | jq -c '.services[]?' || return 1
     fi
 }
 
@@ -302,7 +300,7 @@ ecs() {
     ecs clusters | jtbl
     ecs task-def my-family:42
     ecs service my-cluster | jtbl
-    ecs service my-cluster --full | jq '.[0]'
+    ecs service my-cluster --full | head -n1 | jq
     ecs service my-cluster my-service
     ecs service my-cluster my-service --full
     ecs tasks my-cluster | jtbl
@@ -499,13 +497,13 @@ ecs_service() {
     --full              Return the full ECS describe-services objects
 
     Behavior:
-    No args: return an array of all services across all clusters.
-    One arg: return an array of all services in the cluster.
+    No args: return jsonlines of all services across all clusters.
+    One arg: return jsonlines of all services in the cluster.
     Two args: return a single service object.
 
     Output:
-    Default: ClusterName, ServiceName, Status, TaskCount
-    With --full: the full ECS describe-services objects
+    Default list output: jsonlines of ClusterName, ServiceName, Status, TaskCount
+    With --full: jsonlines of the full ECS describe-services objects
     "
 
     local full_output=0
@@ -546,11 +544,6 @@ ecs_service() {
         return 1
     fi
 
-    local output_file
-    local status
-    output_file=$(ecs__mktemp_file services) || return 1
-    : >"$output_file"
-
     if [ "${#args[@]}" -eq 2 ]; then
         local response
         local service_object
@@ -558,20 +551,17 @@ ecs_service() {
         local service="${args[1]}"
 
         if ! response=$(aws --output json ecs describe-services --cluster "$cluster" --services "$service"); then
-            rm -f "$output_file"
             return 1
         fi
 
         if [ "$full_output" -eq 1 ]; then
-            service_object=$(echo "$response" | jq '.services[0] // empty')
+            if ! service_object=$(echo "$response" | jq '.services[0] // empty'); then
+                return 1
+            fi
         else
-            service_object=$(echo "$response" | ecs__format_service_batch "$cluster" | jq -s '.[0] // empty')
-        fi
-        status=$?
-        rm -f "$output_file"
-
-        if [ $status -ne 0 ]; then
-            return $status
+            if ! service_object=$(echo "$response" | ecs__format_service_batch "$cluster" | jq -s '.[0] // empty'); then
+                return 1
+            fi
         fi
 
         if [ -z "$service_object" ]; then
@@ -590,7 +580,6 @@ ecs_service() {
         local cluster="${args[0]}"
 
         if ! service_lines=$(ecs__list_service_arns "$cluster"); then
-            rm -f "$output_file"
             return 1
         fi
 
@@ -602,20 +591,15 @@ ecs_service() {
 
         if [ "${#service_arns[@]}" -gt 0 ]; then
             if [ "$full_output" -eq 1 ]; then
-                if ! ecs__append_described_services_raw "$cluster" "$output_file" "${service_arns[@]}"; then
-                    rm -f "$output_file"
+                if ! ecs__append_described_services_raw "$cluster" "${service_arns[@]}"; then
                     return 1
                 fi
-            elif ! ecs__append_described_services "$cluster" "$output_file" "${service_arns[@]}"; then
-                rm -f "$output_file"
+            elif ! ecs__append_described_services "$cluster" "${service_arns[@]}"; then
                 return 1
             fi
         fi
 
-        jq -s '.' "$output_file"
-        status=$?
-        rm -f "$output_file"
-        return $status
+        return 0
     fi
 
     local cluster_arns=()
@@ -626,7 +610,6 @@ ecs_service() {
     local service_lines
 
     if ! cluster_lines=$(ecs__list_cluster_arns); then
-        rm -f "$output_file"
         return 1
     fi
 
@@ -639,7 +622,6 @@ ecs_service() {
     for cluster_arn in "${cluster_arns[@]}"; do
         service_arns=()
         if ! service_lines=$(ecs__list_service_arns "$cluster_arn"); then
-            rm -f "$output_file"
             return 1
         fi
 
@@ -654,20 +636,15 @@ ecs_service() {
         fi
 
         if [ "$full_output" -eq 1 ]; then
-            if ! ecs__append_described_services_raw "$cluster_arn" "$output_file" "${service_arns[@]}"; then
-                rm -f "$output_file"
+            if ! ecs__append_described_services_raw "$cluster_arn" "${service_arns[@]}"; then
                 return 1
             fi
-        elif ! ecs__append_described_services "$cluster_arn" "$output_file" "${service_arns[@]}"; then
-            rm -f "$output_file"
+        elif ! ecs__append_described_services "$cluster_arn" "${service_arns[@]}"; then
             return 1
         fi
     done
 
-    jq -s '.' "$output_file"
-    status=$?
-    rm -f "$output_file"
-    return $status
+    return 0
 }
 
 # List running tasks for a cluster or service
