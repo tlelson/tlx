@@ -64,6 +64,23 @@ ecs__format_service_batch() {
       }'
 }
 
+ecs__format_service_detail() {
+    local cluster="$1"
+
+    jq --arg cluster "$cluster" '
+      .services[0]? | {
+        ClusterName: ($cluster | split("/")[-1]),
+        ServiceName: .serviceName,
+        Status: .status,
+        TaskDefinitionArn: (.taskDefinition // null),
+        DesiredCount: (.desiredCount // 0),
+        RunningCount: (.runningCount // 0),
+        PendingCount: (.pendingCount // 0),
+        LaunchType: (.launchType // null),
+        EnableExecuteCommand: (.enableExecuteCommand // false)
+      }'
+}
+
 ecs__append_described_clusters_raw() {
     local output_file="$1"
     shift
@@ -503,6 +520,8 @@ ecs_service() {
 
     Output:
     Default list output: jsonlines of ClusterName, ServiceName, Status, TaskCount
+    Default single-service output: ClusterName, ServiceName, Status, TaskDefinitionArn,
+    DesiredCount, RunningCount, PendingCount, LaunchType, EnableExecuteCommand
     With --full: jsonlines of the full ECS describe-services objects
     "
 
@@ -559,12 +578,12 @@ ecs_service() {
                 return 1
             fi
         else
-            if ! service_object=$(echo "$response" | ecs__format_service_batch "$cluster" | jq -s '.[0] // empty'); then
+            if ! service_object=$(echo "$response" | ecs__format_service_detail "$cluster"); then
                 return 1
             fi
         fi
 
-        if [ -z "$service_object" ]; then
+        if [ -z "$service_object" ] || [ "$service_object" = "null" ]; then
             echo "Error: Service not found: $service" >&2
             return 1
         fi
