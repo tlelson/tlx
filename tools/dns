@@ -16,10 +16,15 @@ Output: JSON lines with zone info plus any associated VPCs."
 
         # Extract hosted zone ID
         hostedZoneId=$(echo "$hostedZone" | jq -r .Id)
+        isPublic=$(echo "$hostedZone" | jq -r .Public)
 
-        # Fetch VPCs associated with the hosted zone
-        vpcs=$(aws --output json route53 get-hosted-zone --id "$hostedZoneId" |
-            jq -c '[.VPCs[] | "\(.VPCId) (\(.VPCRegion))"] | join(",")')
+        if [[ "$isPublic" == "true" ]]; then
+            vpcs='""'
+        else
+            # Private zones may omit VPCs in edge cases; treat that as an empty list.
+            vpcs=$(aws --output json route53 get-hosted-zone --id "$hostedZoneId" |
+                jq -c '(.VPCs // [] | map("\(.VPCId) (\(.VPCRegion))") | join(","))')
+        fi
 
         # Append VPCs to the hosted zone JSON object
         echo "$hostedZone" | jq -c --argjson vpcs "$vpcs" '. + {VPCs: $vpcs}'
@@ -28,12 +33,15 @@ Output: JSON lines with zone info plus any associated VPCs."
 
     (
         # Fetch hosted zones and store in temporary file
-        aws --output json route53 list-hosted-zones | jq -cr '.HostedZones[] | {
-        Id, Name, Public: (.Config.PrivateZone | not), RecordSets: .ResourceRecordSetCount }' | while read -r hostedZone; do
+        while read -r hostedZone; do
             ((i = i % concurrency)) # Exits with i. Can't exit on first error
             ((i++ == 0)) && wait
             task "$hostedZone" &
-        done
+        done < <(
+            aws --output json route53 list-hosted-zones | jq -cr '.HostedZones[] | {
+            Id, Name, Public: (.Config.PrivateZone | not), RecordSets: .ResourceRecordSetCount }'
+        )
+        wait
     )
 }
 export -f hosted_zones
