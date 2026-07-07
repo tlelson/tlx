@@ -1,0 +1,269 @@
+#!/usr/bin/env bash
+
+ROOT_CMD=${TLX_SAGEMAKER_CMD:-$(basename "$0")}
+case "$ROOT_CMD" in
+sm)
+    ROOT_CMD="sm"
+    ALT_CMD="sagemaker"
+    ;;
+sagemaker | sagemaker.sh)
+    ROOT_CMD="sagemaker"
+    ALT_CMD="sm"
+    ;;
+*)
+    ROOT_CMD="sagemaker"
+    ALT_CMD="sm"
+    ;;
+esac
+
+sagemaker_endpoints_list() {
+    local invocation="${ROOT_CMD} endpoints list"
+    local help_text="Usage: ${invocation} [options]
+
+    List SageMaker endpoints.
+
+    Options:
+    --help, -h          Display this help message
+
+    Output:
+    jsonlines of endpoint summary fields (EndpointName, EndpointStatus, EndpointConfigName, CreationTime, LastModifiedTime).
+
+    Examples:
+    ${invocation} | jtbl
+    "
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [[ -n "$1" ]]; then
+        echo "Unknown argument: $1" >&2
+        echo "$help_text" >&2
+        return 1
+    fi
+
+    local output
+    if ! output=$(aws --output json sagemaker list-endpoints); then
+        return 1
+    fi
+
+    local endpoint_name
+    while IFS= read -r endpoint_name; do
+        [ -n "$endpoint_name" ] || continue
+
+        aws --output json sagemaker describe-endpoint \
+            --endpoint-name "$endpoint_name" | jq -c '{
+                EndpointName,
+                EndpointStatus,
+                EndpointConfigName,
+                CreationTime,
+                LastModifiedTime
+            }' || return 1
+    done < <(echo "$output" | jq -r '.Endpoints[]?.EndpointName')
+}
+
+sagemaker_endpoints_rm() {
+    local invocation="${ROOT_CMD} endpoints rm"
+    local help_text="Usage: ${invocation} ENDPOINT_NAME [options]
+
+    Arguments:
+    ENDPOINT_NAME       The SageMaker endpoint name
+
+    Options:
+    --help, -h          Display this help message
+
+    Behavior:
+    Sends a delete request for the specified SageMaker endpoint.
+
+    Output:
+    Prints a confirmation message on success.
+
+    Examples:
+    ${invocation} my-endpoint
+    "
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [[ -z "$1" ]]; then
+        echo "Error: ENDPOINT_NAME is required" >&2
+        echo "$help_text" >&2
+        return 1
+    fi
+
+    if [[ -n "$2" ]]; then
+        echo "Error: too many arguments" >&2
+        echo "$help_text" >&2
+        return 1
+    fi
+
+    local endpoint_name="$1"
+    if ! aws sagemaker delete-endpoint --endpoint-name "$endpoint_name"; then
+        return 1
+    fi
+
+    echo "Delete requested for SageMaker endpoint '$endpoint_name'."
+}
+
+sagemaker_endpoints() {
+    local help_text="Usage: ${ROOT_CMD} endpoints <command> [args] [options]
+
+    Commands:
+    list                 List SageMaker endpoints as jsonlines
+    rm ENDPOINT_NAME     Delete a SageMaker endpoint
+
+    Options:
+    --help, -h           Display this help message
+
+    Examples:
+    ${ROOT_CMD} endpoints list | jtbl
+    ${ROOT_CMD} endpoints rm my-endpoint
+
+    You can also invoke this tool as '${ALT_CMD}'.
+    "
+
+    case "$1" in
+    list)
+        shift
+        sagemaker_endpoints_list "$@"
+        ;;
+    rm)
+        shift
+        sagemaker_endpoints_rm "$@"
+        ;;
+    --help | -h | "")
+        echo "$help_text"
+        if [[ -z "$1" ]]; then
+            return 1
+        fi
+        return 0
+        ;;
+    *)
+        echo "Unknown command: $1" >&2
+        echo "$help_text" >&2
+        return 1
+        ;;
+    esac
+}
+
+sagemaker_endpoint_config_show() {
+    local invocation="${ROOT_CMD} endpoint-config show"
+    local help_text="Usage: ${invocation} ENDPOINT_CONFIG_NAME [options]
+
+    Arguments:
+    ENDPOINT_CONFIG_NAME The SageMaker endpoint configuration name
+
+    Options:
+    --help, -h           Display this help message
+
+    Output:
+    Structured JSON from 'aws sagemaker describe-endpoint-config'.
+
+    Examples:
+    ${invocation} my-endpoint-config
+    "
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [[ -z "$1" ]]; then
+        echo "Error: ENDPOINT_CONFIG_NAME is required" >&2
+        echo "$help_text" >&2
+        return 1
+    fi
+
+    if [[ -n "$2" ]]; then
+        echo "Error: too many arguments" >&2
+        echo "$help_text" >&2
+        return 1
+    fi
+
+    aws --output json sagemaker describe-endpoint-config \
+        --endpoint-config-name "$1"
+}
+
+sagemaker_endpoint_config() {
+    local help_text="Usage: ${ROOT_CMD} endpoint-config <command> [args] [options]
+
+    Commands:
+    show ENDPOINT_CONFIG_NAME
+                         Describe a SageMaker endpoint configuration
+
+    Options:
+    --help, -h           Display this help message
+
+    Examples:
+    ${ROOT_CMD} endpoint-config show my-endpoint-config
+
+    You can also invoke this tool as '${ALT_CMD}'.
+    "
+
+    case "$1" in
+    show)
+        shift
+        sagemaker_endpoint_config_show "$@"
+        ;;
+    --help | -h | "")
+        echo "$help_text"
+        if [[ -z "$1" ]]; then
+            return 1
+        fi
+        return 0
+        ;;
+    *)
+        echo "Unknown command: $1" >&2
+        echo "$help_text" >&2
+        return 1
+        ;;
+    esac
+}
+
+sagemaker() {
+    local help_text="Usage: ${ROOT_CMD} <command> [args] [options]
+
+    Commands:
+    endpoints            Manage SageMaker endpoints
+    endpoint-config      Manage SageMaker endpoint configurations
+
+    Options:
+    --help, -h           Display this help message
+
+    Examples:
+    ${ROOT_CMD} endpoints list
+    ${ROOT_CMD} endpoints rm my-endpoint
+    ${ROOT_CMD} endpoint-config show my-endpoint-config
+
+    Short alias:
+    ${ALT_CMD}
+    "
+
+    case "$1" in
+    endpoints)
+        shift
+        sagemaker_endpoints "$@"
+        ;;
+    endpoint-config)
+        shift
+        sagemaker_endpoint_config "$@"
+        ;;
+    --help | -h | "")
+        echo "$help_text"
+        if [[ -z "$1" ]]; then
+            return 1
+        fi
+        return 0
+        ;;
+    *)
+        echo "Unknown command: $1" >&2
+        echo "$help_text" >&2
+        return 1
+        ;;
+    esac
+}
+
+sagemaker "$@"
