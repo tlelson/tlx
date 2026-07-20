@@ -149,6 +149,309 @@ sagemaker_endpoints() {
     esac
 }
 
+sagemaker_notebooks_list() {
+    local invocation="${ROOT_CMD} notebooks list"
+    local help_text="Usage: ${invocation} [options]
+
+    List SageMaker notebook instances.
+
+    Options:
+    --help, -h          Display this help message
+
+    Output:
+    jsonlines of notebook instance summary fields (NotebookInstanceName, NotebookInstanceStatus, InstanceType, Url, CreationTime, LastModifiedTime).
+
+    Examples:
+    ${invocation} | jtbl
+    "
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [[ -n "$1" ]]; then
+        echo "Unknown argument: $1" >&2
+        echo "$help_text" >&2
+        return 1
+    fi
+
+    aws --output json sagemaker list-notebook-instances | jq -c '
+      .NotebookInstances[]? | {
+        NotebookInstanceName,
+        NotebookInstanceStatus,
+        InstanceType,
+        Url,
+        CreationTime,
+        LastModifiedTime
+      }'
+}
+
+sagemaker_notebooks_status() {
+    local notebook_instance_name="$1"
+
+    aws sagemaker describe-notebook-instance \
+        --notebook-instance-name "$notebook_instance_name" \
+        --query 'NotebookInstanceStatus' \
+        --output text
+}
+
+sagemaker_notebooks_prepare_delete() {
+    local notebook_instance_name="$1"
+    local stop_requested=""
+    local previous_status=""
+    local status
+
+    while true; do
+        if ! status=$(sagemaker_notebooks_status "$notebook_instance_name"); then
+            return 1
+        fi
+
+        if [[ "$status" != "$previous_status" ]]; then
+            echo "SageMaker notebook instance '$notebook_instance_name' status: $status" >&2
+            previous_status="$status"
+        fi
+
+        case "$status" in
+        Stopped | Failed)
+            return 0
+            ;;
+        Deleting)
+            echo "Delete is already in progress for SageMaker notebook instance '$notebook_instance_name'." >&2
+            return 2
+            ;;
+        InService)
+            if [[ -z "$stop_requested" ]]; then
+                echo "Stopping SageMaker notebook instance '$notebook_instance_name' before delete." >&2
+                if ! aws sagemaker stop-notebook-instance \
+                    --notebook-instance-name "$notebook_instance_name"; then
+                    return 1
+                fi
+                stop_requested="1"
+            fi
+            ;;
+        Pending | Stopping | Updating)
+            ;;
+        *)
+            echo "Error: cannot delete SageMaker notebook instance '$notebook_instance_name' while status is '$status'" >&2
+            return 1
+            ;;
+        esac
+
+        sleep 10
+    done
+}
+
+sagemaker_notebooks_delete() {
+    local invocation="${ROOT_CMD} notebooks delete"
+    local help_text="Usage: ${invocation} NOTEBOOK_INSTANCE_NAME [options]
+
+    Arguments:
+    NOTEBOOK_INSTANCE_NAME
+                         The SageMaker notebook instance name
+
+    Options:
+    --help, -h           Display this help message
+
+    Behavior:
+    Stops the SageMaker notebook instance if needed, waits until it can be deleted, then sends a delete request.
+
+    Output:
+    Prints progress to stderr and a confirmation message on success.
+
+    Examples:
+    ${invocation} my-notebook
+    "
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [[ -z "$1" ]]; then
+        echo "Error: NOTEBOOK_INSTANCE_NAME is required" >&2
+        echo "$help_text" >&2
+        return 1
+    fi
+
+    if [[ -n "$2" ]]; then
+        echo "Error: too many arguments" >&2
+        echo "$help_text" >&2
+        return 1
+    fi
+
+    local notebook_instance_name="$1"
+    sagemaker_notebooks_prepare_delete "$notebook_instance_name"
+    local prepare_result=$?
+    if [[ "$prepare_result" -eq 2 ]]; then
+        return 0
+    fi
+    if [[ "$prepare_result" -ne 0 ]]; then
+        return "$prepare_result"
+    fi
+
+    if ! aws sagemaker delete-notebook-instance \
+        --notebook-instance-name "$notebook_instance_name"; then
+        return 1
+    fi
+
+    echo "Delete requested for SageMaker notebook instance '$notebook_instance_name'."
+}
+
+sagemaker_notebooks_start() {
+    local invocation="${ROOT_CMD} notebooks start"
+    local help_text="Usage: ${invocation} NOTEBOOK_INSTANCE_NAME [options]
+
+    Arguments:
+    NOTEBOOK_INSTANCE_NAME
+                         The SageMaker notebook instance name
+
+    Options:
+    --help, -h           Display this help message
+
+    Behavior:
+    Sends a start request for the specified SageMaker notebook instance.
+
+    Output:
+    Prints a confirmation message on success.
+
+    Examples:
+    ${invocation} my-notebook
+    "
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [[ -z "$1" ]]; then
+        echo "Error: NOTEBOOK_INSTANCE_NAME is required" >&2
+        echo "$help_text" >&2
+        return 1
+    fi
+
+    if [[ -n "$2" ]]; then
+        echo "Error: too many arguments" >&2
+        echo "$help_text" >&2
+        return 1
+    fi
+
+    local notebook_instance_name="$1"
+    if ! aws sagemaker start-notebook-instance \
+        --notebook-instance-name "$notebook_instance_name"; then
+        return 1
+    fi
+
+    echo "Start requested for SageMaker notebook instance '$notebook_instance_name'."
+}
+
+sagemaker_notebooks_stop() {
+    local invocation="${ROOT_CMD} notebooks stop"
+    local help_text="Usage: ${invocation} NOTEBOOK_INSTANCE_NAME [options]
+
+    Arguments:
+    NOTEBOOK_INSTANCE_NAME
+                         The SageMaker notebook instance name
+
+    Options:
+    --help, -h           Display this help message
+
+    Behavior:
+    Sends a stop request for the specified SageMaker notebook instance.
+
+    Output:
+    Prints a confirmation message on success.
+
+    Examples:
+    ${invocation} my-notebook
+    "
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [[ -z "$1" ]]; then
+        echo "Error: NOTEBOOK_INSTANCE_NAME is required" >&2
+        echo "$help_text" >&2
+        return 1
+    fi
+
+    if [[ -n "$2" ]]; then
+        echo "Error: too many arguments" >&2
+        echo "$help_text" >&2
+        return 1
+    fi
+
+    local notebook_instance_name="$1"
+    if ! aws sagemaker stop-notebook-instance \
+        --notebook-instance-name "$notebook_instance_name"; then
+        return 1
+    fi
+
+    echo "Stop requested for SageMaker notebook instance '$notebook_instance_name'."
+}
+
+sagemaker_notebooks() {
+    local help_text="Usage: ${ROOT_CMD} notebooks <command> [args] [options]
+
+    Commands:
+    list                 List SageMaker notebook instances as jsonlines
+    start NOTEBOOK_INSTANCE_NAME
+                         Start a SageMaker notebook instance
+    stop NOTEBOOK_INSTANCE_NAME
+                         Stop a SageMaker notebook instance
+    delete NOTEBOOK_INSTANCE_NAME
+                         Delete a SageMaker notebook instance
+    rm NOTEBOOK_INSTANCE_NAME
+                         Alias for delete
+
+    Options:
+    --help, -h           Display this help message
+
+    Examples:
+    ${ROOT_CMD} notebooks list | jtbl
+    ${ROOT_CMD} notebooks start my-notebook
+    ${ROOT_CMD} notebooks stop my-notebook
+    ${ROOT_CMD} notebooks delete my-notebook
+    ${ROOT_CMD} nb list
+    ${ROOT_CMD} notebook-instances rm my-notebook
+
+    You can also invoke this tool as '${ALT_CMD}'.
+    "
+
+    case "$1" in
+    list)
+        shift
+        sagemaker_notebooks_list "$@"
+        ;;
+    start)
+        shift
+        sagemaker_notebooks_start "$@"
+        ;;
+    stop)
+        shift
+        sagemaker_notebooks_stop "$@"
+        ;;
+    delete | rm)
+        shift
+        sagemaker_notebooks_delete "$@"
+        ;;
+    --help | -h | "")
+        echo "$help_text"
+        if [[ -z "$1" ]]; then
+            return 1
+        fi
+        return 0
+        ;;
+    *)
+        echo "Unknown command: $1" >&2
+        echo "$help_text" >&2
+        return 1
+        ;;
+    esac
+}
+
 sagemaker_endpoint_config_show() {
     local invocation="${ROOT_CMD} endpoint-config show"
     local help_text="Usage: ${invocation} ENDPOINT_CONFIG_NAME [options]
@@ -228,6 +531,9 @@ sagemaker() {
 
     Commands:
     endpoints            Manage SageMaker endpoints
+    notebooks            Manage SageMaker notebook instances
+    nb                   Alias for notebooks
+    notebook-instances   Alias for notebooks
     endpoint-config      Manage SageMaker endpoint configurations
 
     Options:
@@ -236,6 +542,11 @@ sagemaker() {
     Examples:
     ${ROOT_CMD} endpoints list
     ${ROOT_CMD} endpoints rm my-endpoint
+    ${ROOT_CMD} notebooks list
+    ${ROOT_CMD} notebooks start my-notebook
+    ${ROOT_CMD} notebooks stop my-notebook
+    ${ROOT_CMD} notebooks delete my-notebook
+    ${ROOT_CMD} nb list
     ${ROOT_CMD} endpoint-config show my-endpoint-config
 
     Short alias:
@@ -246,6 +557,10 @@ sagemaker() {
     endpoints)
         shift
         sagemaker_endpoints "$@"
+        ;;
+    notebooks | nb | notebook-instances)
+        shift
+        sagemaker_notebooks "$@"
         ;;
     endpoint-config)
         shift
