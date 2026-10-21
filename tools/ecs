@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# ECS/ECR helper CLI modeled after tools/rds
+# ECS helper CLI modeled after tools/rds
 
 ecs__mktemp_file() {
     mktemp "${TMPDIR:-/tmp}/ecs.$1.XXXXXX"
@@ -307,8 +307,6 @@ ecs() {
     service [CLUSTER [SERVICE]] Describe one service, all services in a cluster, or all services
     tasks CLUSTER [SERVICE]     List running tasks in a cluster or for one service
     shell CLUSTER SERVICE       Open an interactive /bin/bash shell in a running task
-    ecr [REPOSITORY]            List repositories or describe one
-    ecr-images REPOSITORY [N]   List up to N latest images (default 10) as JSON
 
     Options:
     --help, -h                  Display this help message
@@ -324,8 +322,6 @@ ecs() {
     ecs tasks my-cluster --full | jq '.[0]'
     ecs tasks my-cluster my-service
     ecs shell my-cluster my-service
-    ecs ecr my-repo
-    ecs ecr-images my-repo 20 | jtbl
     "
 
     if [[ "$1" == "--help" || "$1" == "-h" ]]; then
@@ -356,12 +352,6 @@ ecs() {
         ;;
     shell)
         ecs_shell "$@"
-        ;;
-    ecr)
-        ecs_ecr "$@"
-        ;;
-    ecr-images)
-        ecs_ecr_images "$@"
         ;;
     *)
         echo "Unknown command: $command"
@@ -857,99 +847,6 @@ ecs_shell() {
         --task "$taskID" \
         --command "/bin/bash" \
         --interactive
-}
-
-# List or describe ECR repositories
-ecs_ecr() {
-    local help_text="Usage: ecs ecr [REPOSITORY] [options]
-
-    Arguments:
-    REPOSITORY          Optional. Repository name to describe.
-
-    Options:
-    --help, -h          Display this help message
-    "
-
-    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
-        echo "$help_text"
-        return 0
-    fi
-
-    if [ "$#" -gt 1 ]; then
-        echo "Error: Too many arguments"
-        echo "$help_text"
-        return 1
-    fi
-
-    if [ -n "$1" ]; then
-        aws --output json ecr describe-repositories --repository-names "$1" | jq '.repositories[0]'
-    else
-        aws --output json ecr describe-repositories | jq '
-          [
-            .repositories[]? | {
-              RepositoryName: .repositoryName,
-              RepositoryArn: .repositoryArn,
-              RepositoryUri: .repositoryUri,
-              ImageTagMutability: .imageTagMutability,
-              ScanOnPush: (.imageScanningConfiguration.scanOnPush // false),
-              EncryptionType: (.encryptionConfiguration.encryptionType // null)
-            }
-          ]'
-    fi
-}
-
-# List images for a repository as JSON
-ecs_ecr_images() {
-    local help_text="Usage: ecs ecr-images REPOSITORY [COUNT] [options]
-
-    Arguments:
-    REPOSITORY          Repository name
-
-    Optional Arguments:
-    COUNT               Number of latest images to include (default 10)
-
-    Options:
-    --help, -h          Display this help message
-
-    Examples:
-    ecs ecr-images repo-name | jtbl
-    "
-
-    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
-        echo "$help_text"
-        return 0
-    fi
-
-    if [ -z "$1" ]; then
-        echo "Error: REPOSITORY is required"
-        echo "$help_text"
-        return 1
-    fi
-
-    if [ "$#" -gt 2 ]; then
-        echo "Error: Too many arguments"
-        echo "$help_text"
-        return 1
-    fi
-
-    local repo="$1"
-    local max_items="${2:-10}"
-
-    aws --output json ecr describe-images --repository-name "$repo" --max-items "$max_items" | jq --arg repo "$repo" '
-      [
-        .imageDetails
-        | sort_by(.imagePushedAt)
-        | reverse
-        | .[]
-        | {
-            RepositoryName: $repo,
-            ImageDigest: .imageDigest,
-            ImageTags: (.imageTags // []),
-            PushedAt: (.imagePushedAt // null),
-            LastPulledAt: (.lastRecordedPullTime // null),
-            ImageSizeInBytes: (.imageSizeInBytes // null)
-          }
-      ]'
 }
 
 # Entrypoint

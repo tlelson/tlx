@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+
+# ECR helper CLI
+
+ecr() {
+    local help_text="Usage: ${FUNCNAME[0]} [COMMAND] [ARGS] [options]
+
+    Commands:
+    repos [REPOSITORY]          List repositories or describe one
+    images REPOSITORY [N]       List up to N latest images (default 10) as JSON
+
+    Options:
+    --help, -h                  Display this help message
+
+    Examples:
+    ecr repos | jtbl
+    ecr repos my-repo
+    ecr images my-repo 20 | jtbl
+    "
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [ -z "$1" ]; then
+        echo "$help_text"
+        return 1
+    fi
+
+    local command="$1"
+    shift
+
+    case "$command" in
+    repos)
+        ecr_repos "$@"
+        ;;
+    images)
+        ecr_images "$@"
+        ;;
+    *)
+        echo "Unknown command: $command"
+        echo "$help_text"
+        return 1
+        ;;
+    esac
+}
+
+# List or describe ECR repositories
+ecr_repos() {
+    local help_text="Usage: ecr repos [REPOSITORY] [options]
+
+    Arguments:
+    REPOSITORY          Optional. Repository name to describe.
+
+    Options:
+    --help, -h          Display this help message
+    "
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [ "$#" -gt 1 ]; then
+        echo "Error: Too many arguments"
+        echo "$help_text"
+        return 1
+    fi
+
+    if [ -n "$1" ]; then
+        aws --output json ecr describe-repositories --repository-names "$1" | jq '.repositories[0]'
+    else
+        aws --output json ecr describe-repositories | jq '
+          [
+            .repositories[]? | {
+              RepositoryName: .repositoryName,
+              RepositoryArn: .repositoryArn,
+              RepositoryUri: .repositoryUri,
+              ImageTagMutability: .imageTagMutability,
+              ScanOnPush: (.imageScanningConfiguration.scanOnPush // false),
+              EncryptionType: (.encryptionConfiguration.encryptionType // null)
+            }
+          ]'
+    fi
+}
+
+# List images for a repository as JSON
+ecr_images() {
+    local help_text="Usage: ecr images REPOSITORY [COUNT] [options]
+
+    Arguments:
+    REPOSITORY          Repository name
+
+    Optional Arguments:
+    COUNT               Number of latest images to include (default 10)
+
+    Options:
+    --help, -h          Display this help message
+
+    Examples:
+    ecr images repo-name | jtbl
+    "
+
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "$help_text"
+        return 0
+    fi
+
+    if [ -z "$1" ]; then
+        echo "Error: REPOSITORY is required"
+        echo "$help_text"
+        return 1
+    fi
+
+    if [ "$#" -gt 2 ]; then
+        echo "Error: Too many arguments"
+        echo "$help_text"
+        return 1
+    fi
+
+    local repo="$1"
+    local max_items="${2:-10}"
+
+    aws --output json ecr describe-images --repository-name "$repo" --max-items "$max_items" | jq --arg repo "$repo" '
+      [
+        .imageDetails
+        | sort_by(.imagePushedAt)
+        | reverse
+        | .[]
+        | {
+            RepositoryName: $repo,
+            ImageDigest: .imageDigest,
+            ImageTags: (.imageTags // []),
+            PushedAt: (.imagePushedAt // null),
+            LastPulledAt: (.lastRecordedPullTime // null),
+            ImageSizeInBytes: (.imageSizeInBytes // null)
+          }
+      ]'
+}
+
+# Entrypoint
+ecr "$@"
